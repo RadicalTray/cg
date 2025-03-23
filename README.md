@@ -12,5 +12,5 @@ cmake --build build
 ```
 
 ## CMake Todo
-[ ] Support multiple source files
-[ ] Might need the Boost library
+- [ ] Support multiple source files
+- [ ] Might need the Boost library
