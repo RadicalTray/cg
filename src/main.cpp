@@ -1,3 +1,4 @@
+#include <string>
 #include <print>
 
 #include "window.h"
@@ -6,12 +7,9 @@
 // GOAL: render "rain"
 // TODO:
 //  - [ ] Render texture
+//      - [ ] Load texture
 //  - [ ] Mouse movement
 //  - [ ] "Rain"
-
-struct Config {
-    std::string picture;
-};
 
 Config parseArgs(int argc, char** argv);
 void draw(const Resources& resources);
@@ -21,9 +19,9 @@ int main(int argc, char** argv) {
     std::println("Picture: {}", config.picture);
 
     GLFWwindow* window = windowInit();
-    if (window == nullptr) return -1;
+    if (window == NULL) return -1;
 
-    auto resource_init_result = resourcesInit();
+    auto resource_init_result = resourcesInit(config);
     if (!resource_init_result) return -1;
 
     Resources resources = resource_init_result.value();

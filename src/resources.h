@@ -1,6 +1,11 @@
 #include <glad/gl.h>
 
 #include <optional>
+#include <string>
+
+struct Config {
+    std::string picture;
+};
 
 struct Shaders {
     uint32_t main;
@@ -15,11 +20,8 @@ struct Buffer {
 struct Resources {
     Shaders shaders;
     Buffer buffer;
+    uint32_t texture;
 };
 
-std::optional<Shaders> shadersInit();
-void shadersDeinit(Shaders* shaders);
-std::optional<Buffer> bufferInit();
-void bufferDeinit(Buffer* buffer);
-std::optional<Resources> resourcesInit();
+std::optional<Resources> resourcesInit(Config config);
 void resourcesDeinit(Resources* resources);

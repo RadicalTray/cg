@@ -1,10 +1,19 @@
 #include "resources.h"
 
 #include <glad/gl.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <optional>
 #include <print>
 #include <stdfloat>
+
+std::optional<uint32_t> textureInit(const std::string& filename);
+void textureDeinit(uint32_t* texture);
+std::optional<Shaders> shadersInit();
+void shadersDeinit(Shaders* shaders);
+std::optional<Buffer> bufferInit();
+void bufferDeinit(Buffer* buffer);
 
 using std::float32_t;
 
@@ -21,22 +30,62 @@ const char *fragmentShaderSource =
     "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);"
     "}";
 
-std::optional<Resources> resourcesInit() {
+std::optional<Resources> resourcesInit(Config config) {
+    auto texture = textureInit(config.picture);
+    if (!texture) return std::nullopt;
+
     auto shaders = shadersInit();
-    if (!shaders) return std::nullopt;
+    if (!shaders) {
+        textureDeinit(&texture.value());
+        return std::nullopt;
+    }
 
     auto buffer = bufferInit();
-    if (!buffer) return std::nullopt;
+    if (!buffer) {
+        shadersDeinit(&shaders.value());
+        textureDeinit(&texture.value());
+        return std::nullopt;
+    }
 
     return Resources{
         .shaders = shaders.value(),
         .buffer = buffer.value(),
+        .texture = texture.value(),
     };
 }
 
 void resourcesDeinit(Resources* resources) {
-    shadersDeinit(&resources->shaders);
     bufferDeinit(&resources->buffer);
+    shadersDeinit(&resources->shaders);
+    textureDeinit(&resources->texture);
+}
+
+std::optional<uint32_t> textureInit(const std::string& filename) {
+    uint32_t texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    int32_t x, y, n;
+    unsigned char *image = stbi_load(filename.c_str(), &x, &y, &n, 3);
+    if (image == NULL) {
+        std::println("ERR: Failed to load image \"{}\": {}", filename, stbi_failure_reason());
+        return std::nullopt;
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(image);
+    return texture;
+}
+
+void textureDeinit(uint32_t* texture) {
+    glDeleteTextures(1, texture);
 }
 
 std::optional<Shaders> shadersInit() {
@@ -113,7 +162,7 @@ std::optional<Buffer> bufferInit() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
     glEnableVertexAttribArray(0);
 
     glBindVertexArray(0);
