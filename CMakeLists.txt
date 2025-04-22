@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.31) # idk
 project(cg)
 
-add_executable(main src/main.cpp src/window.cpp)
+add_executable(main src/main.cpp src/window.cpp src/resources.cpp)
 set_property(TARGET main PROPERTY CXX_STANDARD 23)
 
 # stb stuff
