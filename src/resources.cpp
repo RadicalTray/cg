@@ -7,6 +7,7 @@
 #include <optional>
 #include <print>
 #include <stdfloat>
+#include <glm/glm.hpp>
 
 std::optional<uint32_t> textureInit(const std::string& filename);
 void textureDeinit(uint32_t* texture);
@@ -17,18 +18,10 @@ void bufferDeinit(Buffer* buffer);
 
 using std::float32_t;
 
-const char *vertexShaderSource =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;"
-    "void main() {"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);"
-    "}";
-const char *fragmentShaderSource =
-    "#version 330 core\n"
-    "out vec4 FragColor;"
-    "void main() {"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);"
-    "}";
+struct Vertex {
+    glm::vec3 pos;
+    glm::vec2 uv;
+};
 
 std::optional<Resources> resourcesInit(Config config) {
     auto texture = textureInit(config.picture);
@@ -71,6 +64,7 @@ std::optional<uint32_t> textureInit(const std::string& filename) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    stbi_set_flip_vertically_on_load(true);
     int32_t x, y, n;
     unsigned char *image = stbi_load(filename.c_str(), &x, &y, &n, 3);
     if (image == NULL) {
@@ -89,6 +83,31 @@ void textureDeinit(uint32_t* texture) {
 }
 
 std::optional<Shaders> shadersInit() {
+    const char *vertexShaderSource =
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec3 inPos;"
+        "layout (location = 1) in vec2 inUV;"
+        ""
+        "layout (location = 0) out vec2 outUV;"
+        ""
+        "void main() {"
+        "   gl_Position = vec4(inPos.x, inPos.y, inPos.z, 1.0);"
+        "   outUV = inUV;"
+        "}";
+    const char *fragmentShaderSource =
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec2 inUV;"
+        ""
+        "layout (location = 0) out vec4 FragColor;"
+        ""
+        "layout (binding = 0, location = 0) uniform sampler2D sampler;"
+        ""
+        "void main() {"
+        "   FragColor = texture(sampler, inUV);"
+        "}";
+
     int32_t success;
     char infoLog[512];
 
@@ -138,11 +157,11 @@ void shadersDeinit(Shaders* shaders) {
 
 // currently no error checking
 std::optional<Buffer> bufferInit() {
-    const float32_t vertices[] = {
-         0.5f,  0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        -0.5f,  0.5f, 0.0f,
+    const Vertex vertices[] = {
+        {{ 0.5f,  0.5f, 0.0f}, {1.0, 1.0}},
+        {{ 0.5f, -0.5f, 0.0f}, {1.0, 0.0}},
+        {{-0.5f, -0.5f, 0.0f}, {0.0, 0.0}},
+        {{-0.5f,  0.5f, 0.0f}, {0.0, 1.0}},
     };
     const uint32_t indices[] = {
         0, 1, 3,
@@ -162,8 +181,10 @@ std::optional<Buffer> bufferInit() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

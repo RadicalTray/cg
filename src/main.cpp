@@ -49,6 +49,6 @@ void draw(const Resources& resources) {
 
 Config parseArgs(int argc, char** argv) {
     return Config{
-        .picture = argc >= 2 ? argv[1] : "assets/default.jpg",
+        .picture = argc >= 2 ? argv[1] : "assets/default.png",
     };
 }
