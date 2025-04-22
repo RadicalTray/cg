@@ -6,8 +6,7 @@
 
 // GOAL: render "rain"
 // TODO:
-//  - [ ] Render texture
-//      - [ ] Load texture
+//  - [ ] Maintain ratio
 //  - [ ] Mouse movement
 //  - [ ] "Rain"
 
@@ -39,7 +38,7 @@ int main(int argc, char** argv) {
 }
 
 void draw(const Resources& resources) {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.1, 0.1, 0.1, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(resources.shaders.main);
