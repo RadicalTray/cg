@@ -1,7 +1,9 @@
 # initialization
 cmake_minimum_required(VERSION 3.31) # idk
 project(cg)
-add_executable(main src/main.cpp)
+
+add_executable(main src/main.cpp src/window.cpp)
+set_property(TARGET main PROPERTY CXX_STANDARD 23)
 
 # stb stuff
 target_include_directories(main PRIVATE stb)
