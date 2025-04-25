@@ -7,8 +7,15 @@ cmake --build build
 ```
 
 ## Run
+
+UNIX?
 ```
 ./build/main
+```
+
+Windows (MSVC)
+```
+./build/Debug/main.exe
 ```
 
 ## CMake Todo
