@@ -35,6 +35,11 @@ GLFWwindow* windowInit() {
     }
     std::println("INFO: Initialized OpenGL window OpenGL version {}.{}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 
+    std::println("INFO: GL Version: {}", (char*)glGetString(GL_VERSION));
+    std::println("INFO: GLSL Version: {}", (char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+    std::println("INFO: GL Renderer: {}", (char*)glGetString(GL_RENDERER));
+    std::println("INFO: GL Vendor: {}", (char*)glGetString(GL_VENDOR));
+
     return window;
 }
 
