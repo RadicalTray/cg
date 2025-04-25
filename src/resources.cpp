@@ -99,7 +99,7 @@ std::optional<Shaders> shadersInit() {
         ""
         "layout (location = 0) out vec4 FragColor;"
         ""
-        "layout (binding = 0, location = 0) uniform sampler2D sampler;"
+        "uniform sampler2D sampler;"
         ""
         "void main() {"
         "   FragColor = texture(sampler, inUV);"
