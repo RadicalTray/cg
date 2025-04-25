@@ -6,7 +6,6 @@
 
 #include <optional>
 #include <print>
-#include <stdfloat>
 #include <glm/glm.hpp>
 
 std::optional<uint32_t> textureInit(const std::string& filename);
@@ -15,8 +14,6 @@ std::optional<Shaders> shadersInit();
 void shadersDeinit(Shaders* shaders);
 std::optional<Buffer> bufferInit();
 void bufferDeinit(Buffer* buffer);
-
-using std::float32_t;
 
 struct Vertex {
     glm::vec3 pos;

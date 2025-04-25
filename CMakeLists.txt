@@ -15,3 +15,7 @@ target_sources(main PRIVATE glad/src/gl.c)
 # glfw stuff
 add_subdirectory(glfw)
 target_link_libraries(main PRIVATE glfw)
+
+# glm stuff
+add_subdirectory(glm)
+target_link_libraries(main PRIVATE glm)
