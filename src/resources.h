@@ -4,6 +4,10 @@
 #include <optional>
 #include <string>
 
+#define RAIN_PARTICLES_COUNT 1024
+#define RAIN_VERTICES_COUNT 4 * RAIN_PARTICLES_COUNT
+#define RAIN_INDICES_COUNT 6 * RAIN_PARTICLES_COUNT
+
 struct Config {
     std::string picture;
 };
@@ -13,9 +17,6 @@ struct TextureVertex {
     glm::vec2 uv;
 };
 
-#define RAIN_PARTICLES_COUNT 1024
-#define RAIN_VERTICES_COUNT 4 * RAIN_PARTICLES_COUNT
-#define RAIN_INDICES_COUNT 6 * RAIN_PARTICLES_COUNT
 struct RainVertex {
     glm::vec2 pos;
     glm::vec4 clr;
