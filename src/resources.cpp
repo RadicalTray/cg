@@ -11,6 +11,7 @@
 std::optional<uint32_t> textureInit(const std::string& filename);
 void textureDeinit(uint32_t* texture);
 std::optional<Shaders> shadersInit();
+std::optional<GLuint> compileShader(const GLchar* vertex_shader_code, const GLchar* fragment_shader_code);
 void shadersDeinit(Shaders* shaders);
 std::optional<Buffer> bufferInit();
 void bufferDeinit(Buffer* buffer);
@@ -80,7 +81,8 @@ void textureDeinit(uint32_t* texture) {
 }
 
 std::optional<Shaders> shadersInit() {
-    const char *vertexShaderSource =
+    const GLchar *vertex_shader_codes[2] = {
+        // Texture shader
         "#version 430 core\n"
         ""
         "layout (location = 0) in vec3 inPos;"
@@ -91,8 +93,23 @@ std::optional<Shaders> shadersInit() {
         "void main() {"
         "   gl_Position = vec4(inPos.x, inPos.y, inPos.z, 1.0);"
         "   outUV = inUV;"
-        "}";
-    const char *fragmentShaderSource =
+        "}",
+
+        // Rain shader
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec3 inPos;"
+        "layout (location = 1) in vec2 inUV;"
+        ""
+        "layout (location = 0) out vec2 outUV;"
+        ""
+        "void main() {"
+        "   gl_Position = vec4(inPos.x, inPos.y, inPos.z, 1.0);"
+        "   outUV = inUV;"
+        "}",
+    };
+    const GLchar *fragment_shader_codes[2] = {
+        // Texture shader
         "#version 430 core\n"
         ""
         "layout (location = 0) in vec2 inUV;"
@@ -103,53 +120,81 @@ std::optional<Shaders> shadersInit() {
         ""
         "void main() {"
         "   FragColor = texture(sampler, inUV);"
-        "}";
+        "}",
 
-    int32_t success;
-    char infoLog[512];
+        // Rain shader
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec2 inUV;"
+        ""
+        "layout (location = 0) out vec4 FragColor;"
+        ""
+        "uniform sampler2D sampler;"
+        ""
+        "void main() {"
+        "   FragColor = texture(sampler, inUV);"
+        "}",
+    };
 
-    uint32_t vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::println("ERR: Shader vertex compilation failed: {}", infoLog);
-        return std::nullopt;
-    }
+    auto texture_program = compileShader(vertex_shader_codes[0], fragment_shader_codes[0]);
+    if (!texture_program) return std::nullopt;
 
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::println("ERR: Shader fragment compilation failed: {}", infoLog);
-        return std::nullopt;
-    }
-
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::println("ERR: Shader program linking failed: {}", infoLog);
-        return std::nullopt;
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    auto rain_program = compileShader(vertex_shader_codes[1], fragment_shader_codes[1]);
+    if (!rain_program) return std::nullopt;
 
     return Shaders{
-        .main = shaderProgram,
+        .texture = texture_program.value(),
+        .rain = rain_program.value(),
     };
 }
 
+std::optional<GLuint> compileShader(const GLchar* vertex_shader_code, const GLchar* fragment_shader_code) {
+    GLint success;
+    GLchar info[512];
+
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vertex_shader_code, NULL);
+    glCompileShader(vertex_shader);
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertex_shader, 512, NULL, info);
+        std::println("ERR: Shader vertex compilation failed: {}", info);
+        return std::nullopt;
+    }
+
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &fragment_shader_code, NULL);
+    glCompileShader(fragment_shader);
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragment_shader, 512, NULL, info);
+        std::println("ERR: Shader fragment compilation failed: {}", info);
+        glDeleteShader(vertex_shader);
+        return std::nullopt;
+    }
+
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertex_shader);
+    glAttachShader(program, fragment_shader);
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+    if (!success) {
+        glGetProgramInfoLog(program, 512, NULL, info);
+        std::println("ERR: Shader program linking failed: {}", info);
+        return std::nullopt;
+    }
+
+    return program;
+}
+
 void shadersDeinit(Shaders* shaders) {
-    glDeleteProgram(shaders->main);
-    shaders->main = 0;
+    glDeleteProgram(shaders->texture);
+    glDeleteProgram(shaders->rain);
+    shaders->texture = 0;
+    shaders->rain = 0;
 }
 
 // currently no error checking
