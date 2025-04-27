@@ -138,13 +138,13 @@ std::optional<Shaders> shadersInit() {
         .vert =
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 0) in vec2 in_pos;"
         "layout (location = 1) in vec2 in_uv;"
         ""
         "layout (location = 0) out vec2 out_uv;"
         ""
         "void main() {"
-            "gl_Position = vec4(in_pos, 1.0);"
+            "gl_Position = vec4(in_pos, 0.0, 1.0);"
             "out_uv = in_uv;"
         "}",
         .frag =
@@ -164,15 +164,13 @@ std::optional<Shaders> shadersInit() {
         .vert =
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 0) in vec2 in_pos;"
         "layout (location = 1) in vec4 in_color;"
         ""
         "layout (location = 0) out vec4 out_color;"
         ""
-        "layout (location = 0) uniform vec2 scaler;"
-        ""
         "void main() {"
-            "gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "gl_Position = vec4(in_pos, 0.0, 1.0);"
             "out_color = in_color;"
         "}",
         .frag =
@@ -190,15 +188,15 @@ std::optional<Shaders> shadersInit() {
         .vert =
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 0) in vec2 in_pos;"
         "layout (location = 1) in vec2 in_uv;"
         ""
         "layout (location = 0) out vec2 out_uv;"
         ""
-        "layout (location = 0) uniform vec2 scaler;"
+        "layout (location = 0) uniform vec2 scale;"
         ""
         "void main() {"
-            "gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "gl_Position = vec4(scale*in_pos, 0.0, 1.0);"
             "out_uv = in_uv;"
         "}",
         .frag =
@@ -284,15 +282,15 @@ void shadersDeinit(Shaders* shaders) {
 std::optional<Buffer> bufferInit() {
     const Vertex vertices[] = {
         // whole framebuffer
-        {{ 1.0f,  1.0f, 0.0f}, {1.0, 1.0}},
-        {{ 1.0f, -1.0f, 0.0f}, {1.0, 0.0}},
-        {{-1.0f, -1.0f, 0.0f}, {0.0, 0.0}},
-        {{-1.0f,  1.0f, 0.0f}, {0.0, 1.0}},
+        {{ 1.0f,  1.0f}, {1.0, 1.0}},
+        {{ 1.0f, -1.0f}, {1.0, 0.0}},
+        {{-1.0f, -1.0f}, {0.0, 0.0}},
+        {{-1.0f,  1.0f}, {0.0, 1.0}},
 
-        {{ 0.5f,  0.5f, 0.0f}, {1.0, 1.0}},
-        {{ 0.5f, -0.5f, 0.0f}, {1.0, 0.0}},
-        {{-0.5f, -0.5f, 0.0f}, {0.0, 0.0}},
-        {{-0.5f,  0.5f, 0.0f}, {0.0, 1.0}},
+        {{ 0.5f,  0.5f}, {1.0, 1.0}},
+        {{ 0.5f, -0.5f}, {1.0, 0.0}},
+        {{-0.5f, -0.5f}, {0.0, 0.0}},
+        {{-0.5f,  0.5f}, {0.0, 1.0}},
     };
     const GLuint indices[] = {
         0, 1, 3,
@@ -315,8 +313,8 @@ std::optional<Buffer> bufferInit() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(0));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, uv)));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
