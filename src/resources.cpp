@@ -131,31 +131,14 @@ std::optional<Shaders> shadersInit() {
         .vert =
         "#version 430 core\n"
         ""
-        // "layout (location = 0) in vec3 in_pos;"
-        // "layout (location = 1) in vec2 in_uv;"
-        ""
-        "vec2 in_pos[3] = vec2[]("
-            "vec2(-1.0, -1.0),"
-            "vec2(-1.0,  0.0),"
-            "vec2( 0.0,  0.0)"
-            "vec2( 0.0, -1.0)"
-        ");"
-        "vec2 in_uv[3] = vec2[]("
-            "vec2(1.0, 1.0),"
-            "vec2(1.0, 0.0),"
-            "vec2(0.0, 0.0)"
-            "vec2(0.0, 1.0)"
-        ");"
+        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 1) in vec2 in_uv;"
         ""
         "layout (location = 0) out vec2 out_uv;"
         ""
-        // "void main() {"
-        //     "gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-        //     "out_uv = in_uv;"
-        // "}",
         "void main() {"
-            "gl_Position = vec4(in_pos[gl_VertexIndex], 1.0, 1.0);"
-            "out_uv = in_uv[gl_VertexIndex];"
+            "gl_Position = vec4(in_pos, 1.0);"
+            "out_uv = in_uv;"
         "}",
         .frag =
         "#version 430 core\n"
@@ -167,7 +150,7 @@ std::optional<Shaders> shadersInit() {
         "uniform sampler2D sampler;"
         ""
         "void main() {"
-        "   frag_color = texture(sampler, in_uv);"
+            "frag_color = texture(sampler, in_uv);"
         "}",
     };
     const ShaderCodes rain_shader_codes = {
@@ -182,8 +165,8 @@ std::optional<Shaders> shadersInit() {
         "layout (location = 0) uniform vec2 scaler;"
         ""
         "void main() {"
-        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-        "   out_color = in_color;"
+            "gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "out_color = in_color;"
         "}",
         .frag =
         "#version 430 core\n"
@@ -193,7 +176,7 @@ std::optional<Shaders> shadersInit() {
         "layout (location = 0) out vec4 frag_color;"
         ""
         "void main() {"
-        "   frag_color = in_color;"
+            "frag_color = in_color;"
         "}",
     };
     const ShaderCodes screen_shader_codes = {
@@ -208,8 +191,8 @@ std::optional<Shaders> shadersInit() {
         "layout (location = 0) uniform vec2 scaler;"
         ""
         "void main() {"
-        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-        "   out_uv = in_uv;"
+            "gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "out_uv = in_uv;"
         "}",
         .frag =
         "#version 430 core\n"
@@ -221,7 +204,7 @@ std::optional<Shaders> shadersInit() {
         "layout (location = 1) uniform sampler2D sampler;"
         ""
         "void main() {"
-        "   frag_color = texture(sampler, in_uv);"
+            "frag_color = texture(sampler, in_uv);"
         "}",
     };
 
@@ -293,14 +276,23 @@ void shadersDeinit(Shaders* shaders) {
 // currently no error checking
 std::optional<Buffer> bufferInit() {
     const Vertex vertices[] = {
+        // whole framebuffer
+        {{ 1.0f,  1.0f, 0.0f}, {1.0, 1.0}},
+        {{ 1.0f, -1.0f, 0.0f}, {1.0, 0.0}},
+        {{-1.0f, -1.0f, 0.0f}, {0.0, 0.0}},
+        {{-1.0f,  1.0f, 0.0f}, {0.0, 1.0}},
+
         {{ 0.5f,  0.5f, 0.0f}, {1.0, 1.0}},
         {{ 0.5f, -0.5f, 0.0f}, {1.0, 0.0}},
         {{-0.5f, -0.5f, 0.0f}, {0.0, 0.0}},
         {{-0.5f,  0.5f, 0.0f}, {0.0, 1.0}},
     };
-    const uint32_t indices[] = {
+    const GLuint indices[] = {
         0, 1, 3,
         1, 2, 3,
+
+        4, 5, 7,
+        5, 6, 7,
     };
 
     GLuint VBO, VAO, EBO;
