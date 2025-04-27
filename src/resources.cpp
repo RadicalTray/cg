@@ -12,56 +12,75 @@ struct ShaderCodes {
     const GLchar* frag;
 };
 
+void initRainArrays(RainVertex* vertices, GLuint* indices);
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
-void textureDeinit(GLuint* texture);
+void textureDeinit(GLuint* p_texture);
 std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height);
 void renderTargetDeinit(RenderTarget* p_render_target);
 std::optional<Shaders> shadersInit();
 std::optional<GLuint> compileShader(const ShaderCodes shader_codes);
-void shadersDeinit(Shaders* shaders);
-std::optional<Buffer> bufferInit();
-void bufferDeinit(Buffer* buffer);
+void shadersDeinit(Shaders* p_shaders);
+std::optional<Buffers> bufferInit(const RainVertex* rain_vertices, const GLuint* rain_indices);
+void initTextureVertexArray(const GLuint va, const GLuint vb, const GLuint eb);
+void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices);
+void bufferDeinit(Buffers* p_buffer);
 
 std::optional<Resources> resourcesInit(Config config) {
+    Resources resources = {};
+
+    initRainArrays(resources.rain_vertices, resources.rain_indices);
+
     int32_t width = 0;
     int32_t height = 0;
     auto texture = textureInit(config.picture, &width, &height);
     if (!texture) return std::nullopt;
+    resources.texture = texture.value();
 
     auto shaders = shadersInit();
     if (!shaders) {
         textureDeinit(&texture.value());
         return std::nullopt;
     }
+    resources.shaders = shaders.value();
 
-    auto buffer = bufferInit();
-    if (!buffer) {
+    auto buffers = bufferInit(resources.rain_vertices, resources.rain_indices);
+    if (!buffers) {
         shadersDeinit(&shaders.value());
         textureDeinit(&texture.value());
         return std::nullopt;
     }
+    resources.buffers = buffers.value();
 
     auto render_target = renderTargetInit(width, height);
     if (!render_target) {
-        bufferDeinit(&buffer.value());
+        bufferDeinit(&buffers.value());
         shadersDeinit(&shaders.value());
         textureDeinit(&texture.value());
         return std::nullopt;
     }
+    resources.render_target = render_target.value();
 
-    return Resources{
-        .shaders = shaders.value(),
-        .buffer = buffer.value(),
-        .texture = texture.value(),
-        .render_target = render_target.value(),
-    };
+    return resources;
 }
 
-void resourcesDeinit(Resources* resources) {
-    bufferDeinit(&resources->buffer);
-    shadersDeinit(&resources->shaders);
-    textureDeinit(&resources->texture);
-    renderTargetDeinit(&resources->render_target);
+void initRainArrays(RainVertex* vertices, GLuint* indices) {
+    for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
+        vertices[i]   = {{ 0.01f,  0.06f}, {0.0, 0.0, 1.0, 0.0}};
+        vertices[i+1] = {{ 0.01f, -0.06f}, {0.0, 0.0, 1.0, 1.0}};
+        vertices[i+2] = {{-0.01f, -0.06f}, {0.0, 0.0, 1.0, 1.0}};
+        vertices[i+3] = {{-0.01f,  0.06f}, {0.0, 0.0, 1.0, 0.0}};
+    }
+    for (size_t i = 0; i < RAIN_PARTICLES_COUNT; i++) {
+        GLuint arr[] = { 0, 1, 3, 1, 2, 3 };
+        for (size_t j = 0; j < 6; j++) { (indices + 6*i)[j] = arr[j] + 4*i; }
+    }
+}
+
+void resourcesDeinit(Resources* p_resources) {
+    bufferDeinit(&p_resources->buffers);
+    shadersDeinit(&p_resources->shaders);
+    textureDeinit(&p_resources->texture);
+    renderTargetDeinit(&p_resources->render_target);
 }
 
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height) {
@@ -92,8 +111,9 @@ std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width,
     return texture;
 }
 
-void textureDeinit(GLuint* texture) {
-    glDeleteTextures(1, texture);
+void textureDeinit(GLuint* p_texture) {
+    glDeleteTextures(1, p_texture);
+    *p_texture = 0;
 }
 
 std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height) {
@@ -131,6 +151,11 @@ std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height) {
 void renderTargetDeinit(RenderTarget* p_render_target) {
     glDeleteTextures(1, &p_render_target->texture);
     glDeleteFramebuffers(1, &p_render_target->framebuffer);
+
+    p_render_target->texture = 0;
+    p_render_target->framebuffer = 0;
+    p_render_target->width = 0;
+    p_render_target->height = 0;
 }
 
 std::optional<Shaders> shadersInit() {
@@ -271,22 +296,44 @@ std::optional<GLuint> compileShader(const ShaderCodes shader_codes) {
     return program;
 }
 
-void shadersDeinit(Shaders* shaders) {
-    glDeleteProgram(shaders->texture);
-    glDeleteProgram(shaders->rain);
-    shaders->texture = 0;
-    shaders->rain = 0;
+void shadersDeinit(Shaders* p_shaders) {
+    glDeleteProgram(p_shaders->texture);
+    glDeleteProgram(p_shaders->rain);
+    p_shaders->texture = 0;
+    p_shaders->rain = 0;
 }
 
 // currently no error checking
-std::optional<Buffer> bufferInit() {
-    const Vertex vertices[] = {
-        // whole framebuffer
+std::optional<Buffers> bufferInit(const RainVertex* rain_vertices, const GLuint* rain_indices) {
+    GLuint VAs[2] = { 0, 0 };
+    GLuint VBs[2] = { 0, 0 };
+    GLuint EBs[2] = { 0, 0 };
+    glGenVertexArrays(2, VAs);
+    glGenBuffers(2, VBs);
+    glGenBuffers(2, EBs);
+
+    initTextureVertexArray(VAs[0], VBs[0], EBs[0]);
+    initRainVertexArray(VAs[1], VBs[1], EBs[1], rain_vertices, rain_indices);
+
+    return Buffers{
+        .vert_arr = VAs[0],
+        .vert_buf = VBs[0],
+        .elem_buf = EBs[0],
+        .rain_vert_arr = VAs[1],
+        .rain_vert_buf = VBs[1],
+        .rain_elem_buf = EBs[1],
+    };
+}
+
+void initTextureVertexArray(const GLuint va, const GLuint vb, const GLuint eb) {
+    const TextureVertex vertices[] = {
+        // whole viewport
         {{ 1.0f,  1.0f}, {1.0, 1.0}},
         {{ 1.0f, -1.0f}, {1.0, 0.0}},
         {{-1.0f, -1.0f}, {0.0, 0.0}},
         {{-1.0f,  1.0f}, {0.0, 1.0}},
 
+        // middle of viewport
         {{ 0.5f,  0.5f}, {1.0, 1.0}},
         {{ 0.5f, -0.5f}, {1.0, 0.0}},
         {{-0.5f, -0.5f}, {0.0, 0.0}},
@@ -300,37 +347,55 @@ std::optional<Buffer> bufferInit() {
         5, 6, 7,
     };
 
-    GLuint VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    glBindVertexArray(va);
 
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, vb);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eb);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(0));
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, uv)));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)(0));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)(offsetof(TextureVertex, uv)));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    return Buffer{
-        .vert_arr = VAO,
-        .vert_buf = VBO,
-        .elem_buf = EBO,
-    };
 }
 
-void bufferDeinit(Buffer* buffer) {
-    glDeleteVertexArrays(1, &buffer->vert_arr);
-    glDeleteBuffers(1, &buffer->vert_buf);
-    glDeleteBuffers(1, &buffer->elem_buf);
+void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices) {
+    glBindVertexArray(va);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vb);
+    glBufferData(GL_ARRAY_BUFFER, RAIN_VERTICES_COUNT*sizeof(RainVertex), vertices, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eb);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, RAIN_INDICES_COUNT*sizeof(GLuint), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RainVertex), (void*)(0));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(RainVertex), (void*)(offsetof(RainVertex, clr)));
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void bufferDeinit(Buffers* p_buffer) {
+    GLuint VAs[2] = {p_buffer->vert_arr, p_buffer->rain_vert_arr};
+    GLuint VBs[2] = {p_buffer->vert_buf, p_buffer->rain_vert_buf};
+    GLuint EBs[2] = {p_buffer->elem_buf, p_buffer->rain_elem_buf};
+    glDeleteVertexArrays(2, VAs);
+    glDeleteBuffers(2, VBs);
+    glDeleteBuffers(2, EBs);
+
+    p_buffer->vert_arr = 0;
+    p_buffer->vert_buf = 0;
+    p_buffer->elem_buf = 0;
+    p_buffer->rain_vert_arr = 0;
+    p_buffer->rain_vert_buf = 0;
+    p_buffer->rain_elem_buf = 0;
 }

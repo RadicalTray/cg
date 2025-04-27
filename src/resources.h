@@ -1,18 +1,24 @@
 #include <glad/gl.h>
-#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
 #include <optional>
 #include <string>
-#include <print>
 
 struct Config {
     std::string picture;
 };
 
-struct Vertex {
+struct TextureVertex {
     glm::vec2 pos;
     glm::vec2 uv;
+};
+
+#define RAIN_PARTICLES_COUNT 1024
+#define RAIN_VERTICES_COUNT 4 * RAIN_PARTICLES_COUNT
+#define RAIN_INDICES_COUNT 6 * RAIN_PARTICLES_COUNT
+struct RainVertex {
+    glm::vec2 pos;
+    glm::vec4 clr;
 };
 
 struct Shaders {
@@ -21,10 +27,13 @@ struct Shaders {
     GLuint screen;
 };
 
-struct Buffer {
+struct Buffers {
     GLuint vert_arr;
     GLuint vert_buf;
     GLuint elem_buf;
+    GLuint rain_vert_arr;
+    GLuint rain_vert_buf;
+    GLuint rain_elem_buf;
 };
 
 struct RenderTarget {
@@ -36,10 +45,12 @@ struct RenderTarget {
 
 struct Resources {
     Shaders shaders;
-    Buffer buffer;
-    uint32_t texture;
+    Buffers buffers;
+    GLuint texture;
     RenderTarget render_target;
+    RainVertex rain_vertices[RAIN_VERTICES_COUNT];
+    GLuint rain_indices[RAIN_INDICES_COUNT];
 };
 
 std::optional<Resources> resourcesInit(Config config);
-void resourcesDeinit(Resources* resources);
+void resourcesDeinit(Resources* p_resources);
