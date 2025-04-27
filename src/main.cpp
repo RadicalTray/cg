@@ -18,9 +18,12 @@ int main(int argc, char** argv) {
     if (!resource_init_result) return -1;
 
     Resources resources = resource_init_result.value();
+    Shaders shaders = resources.shaders;
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        shaders.updateScaler(window);
 
         draw(resources);
 
@@ -32,10 +35,12 @@ int main(int argc, char** argv) {
 }
 
 void draw(const Resources& resources) {
+    const Shaders shaders = resources.shaders;
+
     glClearColor(0.1, 0.1, 0.1, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(resources.shaders.texture);
+    shaders.useTexture();
     glBindVertexArray(resources.buffer.vert_arr);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }

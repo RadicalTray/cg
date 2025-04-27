@@ -85,54 +85,56 @@ std::optional<Shaders> shadersInit() {
         // Texture shader
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec3 inPos;"
-        "layout (location = 1) in vec2 inUV;"
+        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 1) in vec2 in_uv;"
         ""
-        "layout (location = 0) out vec2 outUV;"
+        "layout (location = 0) out vec2 out_uv;"
+        ""
+        "layout (location = 0) uniform vec2 scaler;"
         ""
         "void main() {"
-        "   gl_Position = vec4(inPos.x, inPos.y, inPos.z, 1.0);"
-        "   outUV = inUV;"
+        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+        "   out_uv = in_uv;"
         "}",
 
         // Rain shader
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec3 inPos;"
-        "layout (location = 1) in vec2 inUV;"
+        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 1) in vec4 in_color;"
         ""
-        "layout (location = 0) out vec2 outUV;"
+        "layout (location = 0) out vec4 out_color;"
+        ""
+        "layout (location = 0) uniform vec2 scaler;"
         ""
         "void main() {"
-        "   gl_Position = vec4(inPos.x, inPos.y, inPos.z, 1.0);"
-        "   outUV = inUV;"
+        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+        "   out_color = in_color;"
         "}",
     };
     const GLchar *fragment_shader_codes[2] = {
         // Texture shader
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec2 inUV;"
+        "layout (location = 0) in vec2 in_uv;"
         ""
-        "layout (location = 0) out vec4 FragColor;"
+        "layout (location = 0) out vec4 frag_color;"
         ""
-        "uniform sampler2D sampler;"
+        "layout (location = 1) uniform sampler2D sampler;"
         ""
         "void main() {"
-        "   FragColor = texture(sampler, inUV);"
+        "   frag_color = texture(sampler, in_uv);"
         "}",
 
         // Rain shader
         "#version 430 core\n"
         ""
-        "layout (location = 0) in vec2 inUV;"
+        "layout (location = 0) in vec4 in_color;"
         ""
-        "layout (location = 0) out vec4 FragColor;"
-        ""
-        "uniform sampler2D sampler;"
+        "layout (location = 0) out vec4 frag_color;"
         ""
         "void main() {"
-        "   FragColor = texture(sampler, inUV);"
+        "   frag_color = in_color;"
         "}",
     };
 
