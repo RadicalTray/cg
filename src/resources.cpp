@@ -129,83 +129,100 @@ void renderTargetDeinit(RenderTarget* p_render_target) {
 std::optional<Shaders> shadersInit() {
     const ShaderCodes texture_shader_codes = {
         .vert =
-            "#version 430 core\n"
-            ""
-            "layout (location = 0) in vec3 in_pos;"
-            "layout (location = 1) in vec2 in_uv;"
-            ""
-            "layout (location = 0) out vec2 out_uv;"
-            ""
-            "layout (location = 0) uniform vec2 scaler;"
-            ""
-            "void main() {"
-            "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-            "   out_uv = in_uv;"
-            "}",
+        "#version 430 core\n"
+        ""
+        // "layout (location = 0) in vec3 in_pos;"
+        // "layout (location = 1) in vec2 in_uv;"
+        ""
+        "vec2 in_pos[3] = vec2[]("
+            "vec2(-1.0, -1.0),"
+            "vec2(-1.0,  0.0),"
+            "vec2( 0.0,  0.0)"
+            "vec2( 0.0, -1.0)"
+        ");"
+        "vec2 in_uv[3] = vec2[]("
+            "vec2(1.0, 1.0),"
+            "vec2(1.0, 0.0),"
+            "vec2(0.0, 0.0)"
+            "vec2(0.0, 1.0)"
+        ");"
+        ""
+        "layout (location = 0) out vec2 out_uv;"
+        ""
+        // "void main() {"
+        //     "gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+        //     "out_uv = in_uv;"
+        // "}",
+        "void main() {"
+            "gl_Position = vec4(in_pos[gl_VertexIndex], 1.0, 1.0);"
+            "out_uv = in_uv[gl_VertexIndex];"
+        "}",
         .frag =
-            "#version 430 core\n"
-            ""
-            "layout (location = 0) in vec2 in_uv;"
-            ""
-            "layout (location = 0) out vec4 frag_color;"
-            ""
-            "layout (location = 1) uniform sampler2D sampler;"
-            ""
-            "void main() {"
-            "   frag_color = texture(sampler, in_uv);"
-            "}",
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec2 in_uv;"
+        ""
+        "layout (location = 0) out vec4 frag_color;"
+        ""
+        "uniform sampler2D sampler;"
+        ""
+        "void main() {"
+        "   frag_color = texture(sampler, in_uv);"
+        "}",
     };
     const ShaderCodes rain_shader_codes = {
         .vert =
-            "#version 430 core\n"
-            ""
-            "layout (location = 0) in vec3 in_pos;"
-            "layout (location = 1) in vec4 in_color;"
-            ""
-            "layout (location = 0) out vec4 out_color;"
-            ""
-            "layout (location = 0) uniform vec2 scaler;"
-            ""
-            "void main() {"
-            "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-            "   out_color = in_color;"
-            "}",
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 1) in vec4 in_color;"
+        ""
+        "layout (location = 0) out vec4 out_color;"
+        ""
+        "layout (location = 0) uniform vec2 scaler;"
+        ""
+        "void main() {"
+        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+        "   out_color = in_color;"
+        "}",
         .frag =
-            "#version 430 core\n"
-            ""
-            "layout (location = 0) in vec4 in_color;"
-            ""
-            "layout (location = 0) out vec4 frag_color;"
-            ""
-            "void main() {"
-            "   frag_color = in_color;"
-            "}",
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec4 in_color;"
+        ""
+        "layout (location = 0) out vec4 frag_color;"
+        ""
+        "void main() {"
+        "   frag_color = in_color;"
+        "}",
     };
-    const ShaderCodes window_code = {
+    const ShaderCodes screen_shader_codes = {
         .vert =
-            "#version 430 core\n"
-            ""
-            "layout (location = 0) in vec3 in_pos;"
-            "layout (location = 1) in vec4 in_color;"
-            ""
-            "layout (location = 0) out vec4 out_color;"
-            ""
-            "layout (location = 0) uniform vec2 scaler;"
-            ""
-            "void main() {"
-            "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-            "   out_color = in_color;"
-            "}",
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec3 in_pos;"
+        "layout (location = 1) in vec2 in_uv;"
+        ""
+        "layout (location = 0) out vec2 out_uv;"
+        ""
+        "layout (location = 0) uniform vec2 scaler;"
+        ""
+        "void main() {"
+        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+        "   out_uv = in_uv;"
+        "}",
         .frag =
-            "#version 430 core\n"
-            ""
-            "layout (location = 0) in vec4 in_color;"
-            ""
-            "layout (location = 0) out vec4 frag_color;"
-            ""
-            "void main() {"
-            "   frag_color = in_color;"
-            "}",
+        "#version 430 core\n"
+        ""
+        "layout (location = 0) in vec2 in_uv;"
+        ""
+        "layout (location = 0) out vec4 frag_color;"
+        ""
+        "layout (location = 1) uniform sampler2D sampler;"
+        ""
+        "void main() {"
+        "   frag_color = texture(sampler, in_uv);"
+        "}",
     };
 
     auto texture_program = compileShader(texture_shader_codes);
@@ -214,9 +231,13 @@ std::optional<Shaders> shadersInit() {
     auto rain_program = compileShader(rain_shader_codes);
     if (!rain_program) return std::nullopt;
 
+    auto screen_program = compileShader(screen_shader_codes);
+    if (!rain_program) return std::nullopt;
+
     return Shaders{
         .texture = texture_program.value(),
         .rain = rain_program.value(),
+        .screen = screen_program.value(),
     };
 }
 
@@ -295,7 +316,7 @@ std::optional<Buffer> bufferInit() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
