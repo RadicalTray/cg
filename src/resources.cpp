@@ -8,18 +8,23 @@
 #include <print>
 #include <glm/glm.hpp>
 
-std::optional<uint32_t> textureInit(const std::string& filename);
-void textureDeinit(uint32_t* texture);
-std::optional<Shaders> shadersInit();
-std::optional<GLuint> compileShader(const GLchar* vertex_shader_code, const GLchar* fragment_shader_code);
-void shadersDeinit(Shaders* shaders);
-std::optional<Buffer> bufferInit();
-void bufferDeinit(Buffer* buffer);
-
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 uv;
 };
+
+struct ShaderCodes {
+    const GLchar* vert;
+    const GLchar* frag;
+};
+
+std::optional<uint32_t> textureInit(const std::string& filename);
+void textureDeinit(uint32_t* texture);
+std::optional<Shaders> shadersInit();
+std::optional<GLuint> compileShader(const ShaderCodes shader_codes);
+void shadersDeinit(Shaders* shaders);
+std::optional<Buffer> bufferInit();
+void bufferDeinit(Buffer* buffer);
 
 std::optional<Resources> resourcesInit(Config config) {
     auto texture = textureInit(config.picture);
@@ -81,67 +86,65 @@ void textureDeinit(uint32_t* texture) {
 }
 
 std::optional<Shaders> shadersInit() {
-    const GLchar *vertex_shader_codes[2] = {
-        // Texture shader
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec3 in_pos;"
-        "layout (location = 1) in vec2 in_uv;"
-        ""
-        "layout (location = 0) out vec2 out_uv;"
-        ""
-        "layout (location = 0) uniform vec2 scaler;"
-        ""
-        "void main() {"
-        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-        "   out_uv = in_uv;"
-        "}",
-
-        // Rain shader
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec3 in_pos;"
-        "layout (location = 1) in vec4 in_color;"
-        ""
-        "layout (location = 0) out vec4 out_color;"
-        ""
-        "layout (location = 0) uniform vec2 scaler;"
-        ""
-        "void main() {"
-        "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
-        "   out_color = in_color;"
-        "}",
+    const ShaderCodes texture_shader_codes = {
+        .vert =
+            "#version 430 core\n"
+            ""
+            "layout (location = 0) in vec3 in_pos;"
+            "layout (location = 1) in vec2 in_uv;"
+            ""
+            "layout (location = 0) out vec2 out_uv;"
+            ""
+            "layout (location = 0) uniform vec2 scaler;"
+            ""
+            "void main() {"
+            "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "   out_uv = in_uv;"
+            "}",
+        .frag =
+            "#version 430 core\n"
+            ""
+            "layout (location = 0) in vec2 in_uv;"
+            ""
+            "layout (location = 0) out vec4 frag_color;"
+            ""
+            "layout (location = 1) uniform sampler2D sampler;"
+            ""
+            "void main() {"
+            "   frag_color = texture(sampler, in_uv);"
+            "}",
     };
-    const GLchar *fragment_shader_codes[2] = {
-        // Texture shader
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec2 in_uv;"
-        ""
-        "layout (location = 0) out vec4 frag_color;"
-        ""
-        "layout (location = 1) uniform sampler2D sampler;"
-        ""
-        "void main() {"
-        "   frag_color = texture(sampler, in_uv);"
-        "}",
-
-        // Rain shader
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec4 in_color;"
-        ""
-        "layout (location = 0) out vec4 frag_color;"
-        ""
-        "void main() {"
-        "   frag_color = in_color;"
-        "}",
+    const ShaderCodes rain_shader_codes = {
+        .vert =
+            "#version 430 core\n"
+            ""
+            "layout (location = 0) in vec3 in_pos;"
+            "layout (location = 1) in vec4 in_color;"
+            ""
+            "layout (location = 0) out vec4 out_color;"
+            ""
+            "layout (location = 0) uniform vec2 scaler;"
+            ""
+            "void main() {"
+            "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "   out_color = in_color;"
+            "}",
+        .frag =
+            "#version 430 core\n"
+            ""
+            "layout (location = 0) in vec4 in_color;"
+            ""
+            "layout (location = 0) out vec4 frag_color;"
+            ""
+            "void main() {"
+            "   frag_color = in_color;"
+            "}",
     };
 
-    auto texture_program = compileShader(vertex_shader_codes[0], fragment_shader_codes[0]);
+    auto texture_program = compileShader(texture_shader_codes);
     if (!texture_program) return std::nullopt;
 
-    auto rain_program = compileShader(vertex_shader_codes[1], fragment_shader_codes[1]);
+    auto rain_program = compileShader(rain_shader_codes);
     if (!rain_program) return std::nullopt;
 
     return Shaders{
@@ -150,12 +153,12 @@ std::optional<Shaders> shadersInit() {
     };
 }
 
-std::optional<GLuint> compileShader(const GLchar* vertex_shader_code, const GLchar* fragment_shader_code) {
+std::optional<GLuint> compileShader(const ShaderCodes shader_codes) {
     GLint success;
     GLchar info[512];
 
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_shader_code, NULL);
+    glShaderSource(vertex_shader, 1, &shader_codes.vert, NULL);
     glCompileShader(vertex_shader);
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
@@ -165,7 +168,7 @@ std::optional<GLuint> compileShader(const GLchar* vertex_shader_code, const GLch
     }
 
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_code, NULL);
+    glShaderSource(fragment_shader, 1, &shader_codes.frag, NULL);
     glCompileShader(fragment_shader);
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
