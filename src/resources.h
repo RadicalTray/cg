@@ -8,7 +8,8 @@ struct Config {
 };
 
 struct Shaders {
-    uint32_t main;
+    uint32_t texture;
+    uint32_t rain;
 };
 
 struct Buffer {

@@ -4,12 +4,6 @@
 #include "window.h"
 #include "resources.h"
 
-// GOAL: render "rain"
-// TODO:
-//  - [ ] Maintain ratio
-//  - [ ] Mouse movement
-//  - [ ] "Rain"
-
 Config parseArgs(int argc, char** argv);
 void draw(const Resources& resources);
 
@@ -41,7 +35,7 @@ void draw(const Resources& resources) {
     glClearColor(0.1, 0.1, 0.1, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(resources.shaders.main);
+    glUseProgram(resources.shaders.texture);
     glBindVertexArray(resources.buffer.vert_arr);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
