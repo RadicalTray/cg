@@ -49,7 +49,7 @@ void draw(const Resources& resources, const int scr_width, const int scr_height)
     glUseProgram(shaders.texture);
     glBindVertexArray(buffer.vert_arr);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
 }
 
 Config parseArgs(int argc, char** argv) {
