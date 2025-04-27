@@ -6,20 +6,16 @@
 
 #include <optional>
 #include <print>
-#include <glm/glm.hpp>
-
-struct Vertex {
-    glm::vec3 pos;
-    glm::vec2 uv;
-};
 
 struct ShaderCodes {
     const GLchar* vert;
     const GLchar* frag;
 };
 
-std::optional<uint32_t> textureInit(const std::string& filename);
-void textureDeinit(uint32_t* texture);
+std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
+void textureDeinit(GLuint* texture);
+std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height);
+void renderTargetDeinit(RenderTarget* p_render_target);
 std::optional<Shaders> shadersInit();
 std::optional<GLuint> compileShader(const ShaderCodes shader_codes);
 void shadersDeinit(Shaders* shaders);
@@ -27,7 +23,9 @@ std::optional<Buffer> bufferInit();
 void bufferDeinit(Buffer* buffer);
 
 std::optional<Resources> resourcesInit(Config config) {
-    auto texture = textureInit(config.picture);
+    int32_t width = 0;
+    int32_t height = 0;
+    auto texture = textureInit(config.picture, &width, &height);
     if (!texture) return std::nullopt;
 
     auto shaders = shadersInit();
@@ -56,8 +54,8 @@ void resourcesDeinit(Resources* resources) {
     textureDeinit(&resources->texture);
 }
 
-std::optional<uint32_t> textureInit(const std::string& filename) {
-    uint32_t texture;
+std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height) {
+    GLuint texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -76,13 +74,56 @@ std::optional<uint32_t> textureInit(const std::string& filename) {
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
     glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    *p_width = x;
+    *p_height = y;
 
     stbi_image_free(image);
     return texture;
 }
 
-void textureDeinit(uint32_t* texture) {
+void textureDeinit(GLuint* texture) {
     glDeleteTextures(1, texture);
+}
+
+std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height) {
+    GLuint render_framebuffer = 0;
+    glGenFramebuffers(1, &render_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer);
+
+    GLuint render_texture = 0;
+    glGenTextures(1, &render_texture);
+    glBindTexture(GL_TEXTURE_2D, render_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, render_texture, 0);
+    GLenum draw_buffers[1] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, draw_buffers);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if(status != GL_FRAMEBUFFER_COMPLETE) {
+        std::println("ERR: framebuffer creation failed ({})", status);
+        return std::nullopt;
+    }
+
+    return RenderTarget{
+        .framebuffer = render_framebuffer,
+        .texture = render_texture,
+        .width = width,
+        .height = height,
+    };
+}
+
+void renderTargetDeinit(RenderTarget* p_render_target) {
+    glDeleteTextures(1, &p_render_target->texture);
+    glDeleteFramebuffers(1, &p_render_target->framebuffer);
 }
 
 std::optional<Shaders> shadersInit() {
@@ -115,6 +156,32 @@ std::optional<Shaders> shadersInit() {
             "}",
     };
     const ShaderCodes rain_shader_codes = {
+        .vert =
+            "#version 430 core\n"
+            ""
+            "layout (location = 0) in vec3 in_pos;"
+            "layout (location = 1) in vec4 in_color;"
+            ""
+            "layout (location = 0) out vec4 out_color;"
+            ""
+            "layout (location = 0) uniform vec2 scaler;"
+            ""
+            "void main() {"
+            "   gl_Position = vec4(scaler, 1.0, 1.0) * vec4(in_pos, 1.0);"
+            "   out_color = in_color;"
+            "}",
+        .frag =
+            "#version 430 core\n"
+            ""
+            "layout (location = 0) in vec4 in_color;"
+            ""
+            "layout (location = 0) out vec4 frag_color;"
+            ""
+            "void main() {"
+            "   frag_color = in_color;"
+            "}",
+    };
+    const ShaderCodes window_code = {
         .vert =
             "#version 430 core\n"
             ""
@@ -215,7 +282,7 @@ std::optional<Buffer> bufferInit() {
         1, 2, 3,
     };
 
-    uint32_t VBO, VAO, EBO;
+    GLuint VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);

@@ -1,5 +1,6 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include <optional>
 #include <string>
@@ -9,36 +10,35 @@ struct Config {
     std::string picture;
 };
 
+struct Vertex {
+    glm::vec3 pos;
+    glm::vec2 uv;
+};
+
 struct Shaders {
-    uint32_t texture;
-    uint32_t rain;
-
-    void useTexture() const {
-        glUseProgram(texture);
-    }
-
-    void useRain() const {
-        glUseProgram(rain);
-    }
-
-    void updateScaler(GLFWwindow* window) {
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        const float ratio = float(height)/float(width);
-        glUniform2f(0, 1, 1/ratio);
-    }
+    GLuint texture;
+    GLuint rain;
+    GLuint screen;
 };
 
 struct Buffer {
-    uint32_t vert_arr;
-    uint32_t vert_buf;
-    uint32_t elem_buf;
+    GLuint vert_arr;
+    GLuint vert_buf;
+    GLuint elem_buf;
+};
+
+struct RenderTarget {
+    GLuint framebuffer;
+    GLuint texture;
+    int32_t width;
+    int32_t height;
 };
 
 struct Resources {
     Shaders shaders;
     Buffer buffer;
     uint32_t texture;
+    RenderTarget render_target;
 };
 
 std::optional<Resources> resourcesInit(Config config);
