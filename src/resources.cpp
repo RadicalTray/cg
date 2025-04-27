@@ -41,10 +41,19 @@ std::optional<Resources> resourcesInit(Config config) {
         return std::nullopt;
     }
 
+    auto render_target = renderTargetInit(width, height);
+    if (!render_target) {
+        bufferDeinit(&buffer.value());
+        shadersDeinit(&shaders.value());
+        textureDeinit(&texture.value());
+        return std::nullopt;
+    }
+
     return Resources{
         .shaders = shaders.value(),
         .buffer = buffer.value(),
         .texture = texture.value(),
+        .render_target = render_target.value(),
     };
 }
 
@@ -52,6 +61,7 @@ void resourcesDeinit(Resources* resources) {
     bufferDeinit(&resources->buffer);
     shadersDeinit(&resources->shaders);
     textureDeinit(&resources->texture);
+    renderTargetDeinit(&resources->render_target);
 }
 
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height) {
@@ -98,16 +108,14 @@ std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, render_texture, 0);
-    GLenum draw_buffers[1] = {GL_COLOR_ATTACHMENT0};
+    GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
     glDrawBuffers(1, draw_buffers);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
     if(status != GL_FRAMEBUFFER_COMPLETE) {
         std::println("ERR: framebuffer creation failed ({})", status);
         return std::nullopt;
@@ -201,7 +209,7 @@ std::optional<Shaders> shadersInit() {
         ""
         "layout (location = 0) out vec4 frag_color;"
         ""
-        "layout (location = 1) uniform sampler2D sampler;"
+        "uniform sampler2D sampler;"
         ""
         "void main() {"
             "frag_color = texture(sampler, in_uv);"
