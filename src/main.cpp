@@ -47,7 +47,6 @@ void draw(const Resources& resources, const int scr_width, const int scr_height)
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(shaders.texture);
-    glUniform2f(0, float(scr_height)/float(scr_width), 1.0);
     glBindVertexArray(buffer.vert_arr);
     glBindTexture(GL_TEXTURE_2D, texture);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
