@@ -77,12 +77,12 @@ std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width,
 
     stbi_set_flip_vertically_on_load(true);
     int32_t x, y, n;
-    unsigned char *image = stbi_load(filename.c_str(), &x, &y, &n, 3);
+    unsigned char *image = stbi_load(filename.c_str(), &x, &y, &n, 4);
     if (image == NULL) {
         std::println("ERR: Failed to load image \"{}\": {}", filename, stbi_failure_reason());
         return std::nullopt;
     }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
     *p_width = x;

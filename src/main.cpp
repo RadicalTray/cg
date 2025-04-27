@@ -19,6 +19,8 @@ int main(int argc, char** argv) {
 
     Resources resources = resource_init_result.value();
 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+    glEnable(GL_BLEND);
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
