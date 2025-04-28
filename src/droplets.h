@@ -65,10 +65,34 @@ void main() {
 
     // Apply UV distortion
     vec2 distortedUV = uv + offset;
-    vec3 color = texture(u_texture, distortedUV).rgb;
+
+    vec3 blurredColor = vec3(0.0);
+    float totalWeight = 0.0;
+
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            vec2 sampleUV = distortedUV + vec2(x, y) * 0.002; // Blur strength
+            float weight = (x == 0 && y == 0) ? 4.0 : 1.0;
+            blurredColor += texture(u_texture, sampleUV).rgb * weight;
+            totalWeight += weight;
+        }
+    }
+    blurredColor /= totalWeight;
+
+    // Fetch the sharp original texture
+    vec3 sharpColor = texture(u_texture, distortedUV).rgb;
+
+    // Blend based on droplet strength
+    vec3 color = mix(sharpColor, blurredColor, dropletEffect);
+
+    // Darken overall scene slightly
+    color *= 0.65;
+
+    // tint it slightly blue for rainy vibe
+    color = mix(color, vec3(0.6, 0.7, 0.8), 0.1); //
 
     // Add inner highlight (fake specular light in droplet)
-    float highlight = smoothstep(0.05, 0.0, length(uv - vec2(0.5))) * dropletEffect * 0.5;
+    float highlight = smoothstep(0.05, 0.0, length(uv - vec2(0.5))) * dropletEffect * 0.8;
     color += highlight;
 
     fragColor = vec4(color, 1.0);
