@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
     std::println("Picture: {}", config.picture);
     std::println("Rain count: {}", config.rain_count);
     std::println("Speed: {}", config.speed);
+    std::println("Color: {} {} {} {}->{}", config.color[0], config.color[1], config.color[2], config.color[3], config.color[4]);
 
     const uint32_t rain_count = config.rain_count;
 
@@ -133,8 +134,9 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
 Config parseArgs(int argc, char** argv) {
     uint32_t rain_count = 256;
     float speed = 1.0;
-    std::string picture = "assets/default.png";
-    for (int i = 0; i < argc; i++) {
+    std::optional<std::string> picture = std::nullopt;
+    float color[5] = {};
+    for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0) {
             i += 1;
             rain_count = atoi(argv[i]);
@@ -149,13 +151,31 @@ Config parseArgs(int argc, char** argv) {
                 std::println("Speed cannot be <= 0.0!");
                 speed = 1.0;
             }
+        } else if (strcmp(argv[i], "-c") == 0) {
+            i += 1;
+            char *s = argv[i];
+            int num = 0;
+            for (int j = 0; argv[i][j] != '\0'; j++) {
+                if (argv[i][j] == '/') {
+                    argv[i][j] = '\0';
+                    color[num] = atof(s);
+                    num += 1;
+                    s = argv[i] + j + 1;
+                }
+            }
+            color[num] = atof(s);
         } else {
-            picture = argv[i];
+            picture = std::string(argv[i]);
         }
     }
-    return Config{
-        .picture = argc >= 2 ? argv[1] : "assets/default.png",
+    if (!picture) picture = "assets/default.png";
+
+    Config conf = Config{
+        .picture = picture.value(),
         .rain_count = rain_count,
         .speed = speed,
     };
+    for (int i = 0; i < 5; i++) conf.color[i] = color[i];
+
+    return conf;
 }
