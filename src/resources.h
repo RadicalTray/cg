@@ -2,9 +2,10 @@
 #include <glm/glm.hpp>
 
 #include <optional>
+#include <random>
 #include <string>
 
-#define RAIN_PARTICLES_COUNT 1024
+#define RAIN_PARTICLES_COUNT 64
 #define RAIN_VERTICES_COUNT 4 * RAIN_PARTICLES_COUNT
 #define RAIN_INDICES_COUNT 6 * RAIN_PARTICLES_COUNT
 
@@ -20,6 +21,43 @@ struct TextureVertex {
 struct RainVertex {
     glm::vec2 pos;
     glm::vec4 clr;
+};
+
+struct RainQuad {
+    RainVertex v[4];
+
+    void randomPosX(const size_t idx, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
+        setPosX(idx, dis(gen));
+    }
+
+    void setPosX(const size_t idx, const float x) {
+        const float dx = x - v[idx].pos.x;
+        translatePosX(dx);
+    }
+
+    void translatePosX(const float dx) {
+        for (int i = 0; i < 4; i++) v[i].pos.x += dx;
+    }
+
+    void setPosY(const size_t idx, const float y) {
+        const float dy = y - v[idx].pos.y;
+        translatePosY(dy);
+    }
+
+    void translatePosY(const float dy) {
+        for (int i = 0; i < 4; i++) v[i].pos.y += dy;
+    }
+
+    static RainQuad init(const float width, const float height, const glm::vec3 rgb) {
+        return RainQuad{
+            .v = {
+                {{ width/2.0,  height/2.0}, {rgb, 0.0}},
+                {{ width/2.0, -height/2.0}, {rgb, 1.0}},
+                {{-width/2.0, -height/2.0}, {rgb, 1.0}},
+                {{-width/2.0,  height/2.0}, {rgb, 0.0}},
+            },
+        };
+    }
 };
 
 struct Shaders {
@@ -53,5 +91,5 @@ struct Resources {
     GLuint rain_indices[RAIN_INDICES_COUNT];
 };
 
-std::optional<Resources> resourcesInit(Config config);
+std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribution<>& dis, std::mt19937& gen);
 void resourcesDeinit(Resources* p_resources);

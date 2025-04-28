@@ -1,12 +1,13 @@
 #include <chrono>
 #include <print>
+#include <random>
 #include <string>
 
 #include "window.h"
 #include "resources.h"
 
 Config parseArgs(int argc, char** argv);
-void update(Resources* resources, const float dt_s);
+void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen);
 void draw(const Resources& resources, const int scr_width, const int scr_height);
 void drawRain(const Resources& resources);
 
@@ -17,7 +18,11 @@ int main(int argc, char** argv) {
     GLFWwindow* window = windowInit();
     if (window == NULL) return -1;
 
-    auto resource_init_result = resourcesInit(config);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(-1.0, 1.0);
+
+    auto resource_init_result = resourcesInit(config, dis, gen);
     if (!resource_init_result) return -1;
 
     Resources resources = resource_init_result.value();
@@ -36,7 +41,7 @@ int main(int argc, char** argv) {
         int scr_width, scr_height;
         glfwGetFramebufferSize(window, &scr_width, &scr_height);
 
-        update(&resources, dt_s);
+        update(&resources, dt_s, dis, gen);
         draw(resources, scr_width, scr_height);
 
         glfwSwapBuffers(window);
@@ -48,23 +53,29 @@ int main(int argc, char** argv) {
     windowDeinit(&window);
 }
 
-void update(Resources* resources, const float dt_s) {
+void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
     const float gravity = 1;
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
-        RainVertex v0 = resources->rain_vertices[i];
-        RainVertex v1 = resources->rain_vertices[i+1];
-        RainVertex v2 = resources->rain_vertices[i+2];
-        RainVertex v3 = resources->rain_vertices[i+3];
+        RainQuad quad = {
+            .v = {
+                resources->rain_vertices[i],
+                resources->rain_vertices[i+1],
+                resources->rain_vertices[i+2],
+                resources->rain_vertices[i+3],
+            },
+        };
 
-        v0.pos.y -= gravity * dt_s;
-        v1.pos.y -= gravity * dt_s;
-        v2.pos.y -= gravity * dt_s;
-        v3.pos.y -= gravity * dt_s;
+        if (quad.v[0].pos.y <= -1.0) {
+            quad.setPosY(0, 1.0);
+            quad.randomPosX(0, dis, gen);
+        } else {
+            quad.translatePosY(-gravity*dt_s);
+        }
 
-        resources->rain_vertices[i]   = v0;
-        resources->rain_vertices[i+1] = v1;
-        resources->rain_vertices[i+2] = v2;
-        resources->rain_vertices[i+3] = v3;
+        resources->rain_vertices[i]   = quad.v[0];
+        resources->rain_vertices[i+1] = quad.v[1];
+        resources->rain_vertices[i+2] = quad.v[2];
+        resources->rain_vertices[i+3] = quad.v[3];
     }
     glBindBuffer(GL_ARRAY_BUFFER, resources->buffers.rain_vert_buf);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(resources->rain_vertices), resources->rain_vertices);

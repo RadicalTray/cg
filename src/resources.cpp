@@ -12,7 +12,7 @@ struct ShaderCodes {
     const GLchar* frag;
 };
 
-void initRainArrays(RainVertex* vertices, GLuint* indices);
+void initRainArrays(const float width, const float height, RainVertex* vertices, GLuint* indices, std::uniform_real_distribution<>& dis, std::mt19937& gen);
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
 void textureDeinit(GLuint* p_texture);
 std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height);
@@ -20,21 +20,21 @@ void renderTargetDeinit(RenderTarget* p_render_target);
 std::optional<Shaders> shadersInit();
 std::optional<GLuint> compileShader(const ShaderCodes shader_codes);
 void shadersDeinit(Shaders* p_shaders);
-std::optional<Buffers> bufferInit(const RainVertex* rain_vertices, const GLuint* rain_indices);
-void initTextureVertexArray(const GLuint va, const GLuint vb, const GLuint eb);
+std::optional<Buffers> bufferInit(const float width, const float height, const RainVertex* rain_vertices, const GLuint* rain_indices);
+void initTextureVertexArray(const float width, const float height, const GLuint va, const GLuint vb, const GLuint eb);
 void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices);
 void bufferDeinit(Buffers* p_buffer);
 
-std::optional<Resources> resourcesInit(Config config) {
+std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
     Resources resources = {};
-
-    initRainArrays(resources.rain_vertices, resources.rain_indices);
 
     int32_t width = 0;
     int32_t height = 0;
     auto texture = textureInit(config.picture, &width, &height);
     if (!texture) return std::nullopt;
     resources.texture = texture.value();
+
+    initRainArrays(width, height, resources.rain_vertices, resources.rain_indices, dis, gen);
 
     auto shaders = shadersInit();
     if (!shaders) {
@@ -43,7 +43,7 @@ std::optional<Resources> resourcesInit(Config config) {
     }
     resources.shaders = shaders.value();
 
-    auto buffers = bufferInit(resources.rain_vertices, resources.rain_indices);
+    auto buffers = bufferInit(width, height, resources.rain_vertices, resources.rain_indices);
     if (!buffers) {
         shadersDeinit(&shaders.value());
         textureDeinit(&texture.value());
@@ -63,12 +63,13 @@ std::optional<Resources> resourcesInit(Config config) {
     return resources;
 }
 
-void initRainArrays(RainVertex* vertices, GLuint* indices) {
+void initRainArrays(const float width, const float height, RainVertex* vertices, GLuint* indices, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
-        vertices[i]   = {{ 0.01f,  0.06f}, {0.0, 0.0, 1.0, 0.0}};
-        vertices[i+1] = {{ 0.01f, -0.06f}, {0.0, 0.0, 1.0, 1.0}};
-        vertices[i+2] = {{-0.01f, -0.06f}, {0.0, 0.0, 1.0, 1.0}};
-        vertices[i+3] = {{-0.01f,  0.06f}, {0.0, 0.0, 1.0, 0.0}};
+        RainQuad quad = RainQuad::init(0.01*height/width, 0.16, {0.0, 0.0, 1.0});
+        quad.setPosY(0, dis(gen));
+        quad.randomPosX(0, dis, gen);
+
+        for (size_t j = 0; j < 4; j++) vertices[i+j] = quad.v[j];
     }
     for (size_t i = 0; i < RAIN_PARTICLES_COUNT; i++) {
         GLuint arr[] = { 0, 1, 3, 1, 2, 3 };
@@ -304,7 +305,7 @@ void shadersDeinit(Shaders* p_shaders) {
 }
 
 // currently no error checking
-std::optional<Buffers> bufferInit(const RainVertex* rain_vertices, const GLuint* rain_indices) {
+std::optional<Buffers> bufferInit(const float width, const float height, const RainVertex* rain_vertices, const GLuint* rain_indices) {
     GLuint VAs[2] = { 0, 0 };
     GLuint VBs[2] = { 0, 0 };
     GLuint EBs[2] = { 0, 0 };
@@ -312,7 +313,7 @@ std::optional<Buffers> bufferInit(const RainVertex* rain_vertices, const GLuint*
     glGenBuffers(2, VBs);
     glGenBuffers(2, EBs);
 
-    initTextureVertexArray(VAs[0], VBs[0], EBs[0]);
+    initTextureVertexArray(width, height, VAs[0], VBs[0], EBs[0]);
     initRainVertexArray(VAs[1], VBs[1], EBs[1], rain_vertices, rain_indices);
 
     return Buffers{
@@ -325,7 +326,7 @@ std::optional<Buffers> bufferInit(const RainVertex* rain_vertices, const GLuint*
     };
 }
 
-void initTextureVertexArray(const GLuint va, const GLuint vb, const GLuint eb) {
+void initTextureVertexArray(const float width, const float height, const GLuint va, const GLuint vb, const GLuint eb) {
     const TextureVertex vertices[] = {
         // whole viewport
         {{ 1.0f,  1.0f}, {1.0, 1.0}},
@@ -334,10 +335,10 @@ void initTextureVertexArray(const GLuint va, const GLuint vb, const GLuint eb) {
         {{-1.0f,  1.0f}, {0.0, 1.0}},
 
         // middle of viewport
-        {{ 0.5f,  0.5f}, {1.0, 1.0}},
-        {{ 0.5f, -0.5f}, {1.0, 0.0}},
-        {{-0.5f, -0.5f}, {0.0, 0.0}},
-        {{-0.5f,  0.5f}, {0.0, 1.0}},
+        {{ 0.5*width/height,  0.5f}, {1.0, 1.0}},
+        {{ 0.5*width/height, -0.5f}, {1.0, 0.0}},
+        {{-0.5*width/height, -0.5f}, {0.0, 0.0}},
+        {{-0.5*width/height,  0.5f}, {0.0, 1.0}},
     };
     const GLuint indices[] = {
         0, 1, 3,
