@@ -1,19 +1,24 @@
 #include <chrono>
+#include <optional>
 #include <print>
 #include <random>
 #include <string>
+#include <cstring>
 
 #include "window.h"
 #include "resources.h"
 
 Config parseArgs(int argc, char** argv);
-void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen);
-void draw(const Resources& resources, const int scr_width, const int scr_height);
-void drawRain(const Resources& resources);
+void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen, const Config config);
+void draw(const Resources& resources, const int scr_width, const int scr_height, const uint32_t rain_count);
 
 int main(int argc, char** argv) {
     Config config = parseArgs(argc, argv);
     std::println("Picture: {}", config.picture);
+    std::println("Rain count: {}", config.rain_count);
+    std::println("Speed: {}", config.speed);
+
+    const uint32_t rain_count = config.rain_count;
 
     GLFWwindow* window = windowInit();
     if (window == NULL) return -1;
@@ -27,7 +32,7 @@ int main(int argc, char** argv) {
 
     Resources resources = resource_init_result.value();
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
 
     std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
@@ -41,8 +46,8 @@ int main(int argc, char** argv) {
         int scr_width, scr_height;
         glfwGetFramebufferSize(window, &scr_width, &scr_height);
 
-        update(&resources, dt_s, dis, gen);
-        draw(resources, scr_width, scr_height);
+        update(&resources, dt_s, dis, gen, config);
+        draw(resources, scr_width, scr_height, rain_count);
 
         glfwSwapBuffers(window);
 
@@ -53,9 +58,10 @@ int main(int argc, char** argv) {
     windowDeinit(&window);
 }
 
-void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
-    const float gravity = 1;
-    for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
+void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen, const Config config) {
+    const float speed = config.speed;
+    const uint32_t rain_count = config.rain_count;
+    for (size_t i = 0; i < 4*rain_count; i += 4) {
         RainQuad quad = {
             .v = {
                 resources->rain_vertices[i],
@@ -66,10 +72,10 @@ void update(Resources* resources, const float dt_s, std::uniform_real_distributi
         };
 
         if (quad.v[0].pos.y <= -1.0) {
-            quad.setPosY(0, 1.0 + (dis(gen)+1.0));
+            quad.setPosY(0, 1.0 + (dis(gen)+1.0) + quad.height());
             quad.randomPosX(0, dis, gen);
         } else {
-            quad.translatePosY(-gravity*dt_s);
+            quad.translatePosY(-speed*dt_s);
         }
 
         resources->rain_vertices[i]   = quad.v[0];
@@ -78,11 +84,11 @@ void update(Resources* resources, const float dt_s, std::uniform_real_distributi
         resources->rain_vertices[i+3] = quad.v[3];
     }
     glBindBuffer(GL_ARRAY_BUFFER, resources->buffers.rain_vert_buf);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(resources->rain_vertices), resources->rain_vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, 4*rain_count*sizeof(RainVertex), resources->rain_vertices);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void draw(const Resources& resources, const int scr_width, const int scr_height) {
+void draw(const Resources& resources, const int scr_width, const int scr_height, const uint32_t rain_count) {
     const Shaders shaders = resources.shaders;
     const Buffers buffers = resources.buffers;
     const GLuint image_texture = resources.texture;
@@ -105,7 +111,7 @@ void draw(const Resources& resources, const int scr_width, const int scr_height)
         // render rain
         glUseProgram(resources.shaders.rain);
         glBindVertexArray(resources.buffers.rain_vert_arr);
-        glDrawElements(GL_TRIANGLES, RAIN_INDICES_COUNT, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 6*rain_count, GL_UNSIGNED_INT, 0);
     }
 
     // to window
@@ -125,7 +131,31 @@ void draw(const Resources& resources, const int scr_width, const int scr_height)
 }
 
 Config parseArgs(int argc, char** argv) {
+    uint32_t rain_count = 256;
+    float speed = 1.0;
+    std::string picture = "assets/default.png";
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-n") == 0) {
+            i += 1;
+            rain_count = atoi(argv[i]);
+            if (rain_count > RAIN_PARTICLES_COUNT) {
+                std::println("Rain count cannot exceed {}!", RAIN_PARTICLES_COUNT);
+                rain_count = RAIN_PARTICLES_COUNT;
+            }
+        } else if (strcmp(argv[i], "-s") == 0) {
+            i += 1;
+            speed = atof(argv[i]);
+            if (speed <= 0.0) {
+                std::println("Speed cannot be <= 0.0!");
+                speed = 1.0;
+            }
+        } else {
+            picture = argv[i];
+        }
+    }
     return Config{
         .picture = argc >= 2 ? argv[1] : "assets/default.png",
+        .rain_count = rain_count,
+        .speed = speed,
     };
 }
