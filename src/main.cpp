@@ -55,6 +55,13 @@ int main(int argc, char** argv) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
+    // Variables for capture success message
+    bool showCaptureSuccess = false;
+    float captureSuccessTimer = 0.0f;
+    const float successMessageDuration = 2.0f; // seconds
+
+    bool requestCapture = false; // capture flag
+
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -64,19 +71,47 @@ int main(int argc, char** argv) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Create UI elements (button to capture screen)
+        // Create UI
         ImGui::Begin("Capture Screen");
         if (ImGui::Button("Capture Screen")) {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-            captureScreen(width, height);
+            requestCapture = true; // set capture flag
         }
         ImGui::End();
 
-        // Render OpenGL content
+        // Render OpenGL content (your game, no UI yet)
         draw(resources);
 
-        // Render UI
+        // Perform screen capture BEFORE rendering UI
+        if (requestCapture) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            captureScreen(width, height);
+
+            showCaptureSuccess = true;
+            captureSuccessTimer = 0.0f;
+            requestCapture = false;
+        }
+
+        // Render UI now
+        if (showCaptureSuccess) {
+            ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+            ImGui::Begin("Success", nullptr,
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav);
+
+            ImGui::Text("Capture Success!");
+            ImGui::End();
+
+            captureSuccessTimer += ImGui::GetIO().DeltaTime;
+            if (captureSuccessTimer >= successMessageDuration) {
+                showCaptureSuccess = false;
+            }
+        }
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
