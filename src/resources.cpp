@@ -251,9 +251,10 @@ std::optional<Shaders> shadersInit() {
         "layout (location = 0) out vec2 out_uv;"
         ""
         "layout (location = 0) uniform vec2 scale;"
+        "layout (location = 1) uniform vec2 cam_pos;"
         ""
         "void main() {"
-            "gl_Position = vec4(scale*in_pos, 0.0, 1.0);"
+            "gl_Position = vec4(scale*in_pos + cam_pos, 0.0, 1.0);"
             "out_uv = in_uv;"
         "}",
         .frag =
