@@ -8,9 +8,32 @@
 #include "window.h"
 #include "resources.h"
 
+struct Window {
+    double wheel_xoffset;
+    double wheel_yoffset;
+};
+
+void processInput(
+    Resources* resources,
+    int scr_width,
+    int scr_height,
+    bool *p_held,
+    bool hold,
+    double* p_old_posx,
+    double* p_old_posy,
+    double mouse_posx,
+    double mouse_posy,
+    glm::vec2* p_old_cam_pos
+);
 Config parseArgs(int argc, char** argv);
 void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen, const Config config);
 void draw(const Resources& resources, const int scr_width, const int scr_height, const uint32_t rain_count);
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    Window *win_user = (Window*)glfwGetWindowUserPointer(window);
+    win_user->wheel_xoffset = xoffset;
+    win_user->wheel_yoffset = yoffset;
+}
 
 int main(int argc, char** argv) {
     Config config = parseArgs(argc, argv);
@@ -36,6 +59,19 @@ int main(int argc, char** argv) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
 
+    Window win_user = {};
+    glfwSetWindowUserPointer(window, &win_user);
+
+    glm::vec2 old_cam_pos = {0.0, 0.0};
+
+    double xpos = 0;
+    double ypos = 0;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    double old_xpos = xpos;
+    double old_ypos = ypos;
+
+    bool held = false;
+
     std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
     auto end_time = start_time;
     while (!glfwWindowShouldClose(window)) {
@@ -44,9 +80,13 @@ int main(int argc, char** argv) {
 
         glfwPollEvents();
 
+        glfwGetCursorPos(window, &xpos, &ypos);
+        bool hold = GLFW_PRESS == glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+
         int scr_width, scr_height;
         glfwGetFramebufferSize(window, &scr_width, &scr_height);
 
+        processInput(&resources, scr_width, scr_height, &held, hold, &old_xpos, &old_ypos, xpos, ypos, &old_cam_pos);
         update(&resources, dt_s, dis, gen, config);
         draw(resources, scr_width, scr_height, rain_count);
 
@@ -57,6 +97,40 @@ int main(int argc, char** argv) {
 
     resourcesDeinit(&resources);
     windowDeinit(&window);
+}
+
+void processInput(
+    Resources* resources,
+    int scr_width,
+    int scr_height,
+    bool *p_held,
+    bool hold,
+    double* p_old_posx,
+    double* p_old_posy,
+    double mouse_posx,
+    double mouse_posy,
+    glm::vec2* p_old_cam_pos
+) {
+    glm::vec2 delta = {mouse_posx - *p_old_posx, mouse_posy - *p_old_posy};
+    delta = delta * glm::vec2(2.0, 2.0)/glm::vec2(scr_width, scr_height);
+    glm::vec2 cam_pos = *p_old_cam_pos + delta;
+
+    bool held = *p_held;
+    if (!held && hold) {
+        *p_old_posx = mouse_posx;
+        *p_old_posy = mouse_posy;
+    } else {
+        if (held) {
+            if (hold) {
+                glUseProgram(resources->shaders.screen);
+                glUniform2f(1, cam_pos.x, -cam_pos.y);
+            } else {
+                *p_old_cam_pos = cam_pos;
+            }
+        }
+    }
+
+    *p_held = hold;
 }
 
 void update(Resources* resources, const float dt_s, std::uniform_real_distribution<>& dis, std::mt19937& gen, const Config config) {
