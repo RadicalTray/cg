@@ -113,6 +113,7 @@ void initRainArrays(
     }
 }
 
+
 void resourcesDeinit(Resources* p_resources) {
     bufferDeinit(&p_resources->buffers);
     shadersDeinit(&p_resources->shaders);

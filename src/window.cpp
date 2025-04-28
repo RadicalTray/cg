@@ -8,10 +8,6 @@
 const uint32_t SCR_WIDTH = 800;
 const uint32_t SCR_HEIGHT = 600;
 
-void framebufferSizeCallback(GLFWwindow* window, const int width, const int height) {
-    glViewport(0, 0, width, height);
-}
-
 GLFWwindow* windowInit() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -25,7 +21,6 @@ GLFWwindow* windowInit() {
         return nullptr;
     }
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
     int version = gladLoadGL(glfwGetProcAddress);
     if (version == 0) {
