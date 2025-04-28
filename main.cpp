@@ -168,7 +168,6 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
     const Buffers buffers = resources.buffers;
     const GLuint image_texture = resources.texture;
     const RenderTarget render_target = resources.render_target;
-    const RenderTarget droplet_render_target = resources.droplet_render_target;
 
     // to render target
     {
@@ -190,26 +189,6 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
         glDrawElements(GL_TRIANGLES, 6*rain_count, GL_UNSIGNED_INT, 0);
     }
 
-    // to another render target
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, droplet_render_target.framebuffer);
-        glViewport(0, 0, droplet_render_target.width, droplet_render_target.height);
-
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glUseProgram(shaders.texture);
-        glBindVertexArray(buffers.vert_arr);
-        glBindTexture(GL_TEXTURE_2D, render_target.texture);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
-
-        // render droplets
-        glUseProgram(resources.shaders.droplet);
-        glUniform1f(glGetUniformLocation(resources.shaders.droplet, "u_time"), glfwGetTime());
-        glUniform1i(glGetUniformLocation(resources.shaders.droplet, "u_texture"), 0);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
-    }
-
     // to window
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -221,7 +200,7 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
         glUseProgram(shaders.screen);
         glUniform2f(0, float(scr_height)/(scr_width), 1.0);
         glBindVertexArray(buffers.vert_arr);
-        glBindTexture(GL_TEXTURE_2D, droplet_render_target.texture);
+        glBindTexture(GL_TEXTURE_2D, render_target.texture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLuint)));
     }
 }
@@ -230,7 +209,7 @@ Config parseArgs(int argc, char** argv) {
     uint32_t rain_count = 256;
     float speed = 1.0;
     std::optional<std::string> picture = std::nullopt;
-    float color[5] = {0.0, 0.0, 1.0, 0.0, 1.0};
+    float color[5] = {};
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0) {
             i += 1;
