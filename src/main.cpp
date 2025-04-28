@@ -22,8 +22,8 @@ struct Window {
 };
 
 void captureScreen(int width, int height, const std::string& filename = "screenshot.png") {
-    std::vector<unsigned char> pixels(width * height * 4); // 3 bytes per pixel (RGB)
     const int channels = 4;
+    std::vector<unsigned char> pixels(width * height * channels);
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
     std::vector<unsigned char> flipped(pixels.size());
