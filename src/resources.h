@@ -14,6 +14,7 @@ struct Config {
     uint32_t rain_count;
     float speed;
     glm::vec3 rgb;
+    float color[5]; // R G B A_top A_bot
 };
 
 struct TextureVertex {
@@ -55,13 +56,13 @@ struct RainQuad {
         return v[0].pos.y - v[1].pos.y;
     }
 
-    static RainQuad init(const float width, const float height, const glm::vec3 rgb) {
+    static RainQuad init(const float width, const float height, const glm::vec3 rgb, const glm::vec2 alpha_top_bot) {
         return RainQuad{
             .v = {
-                {{ width/2.0,  height/2.0}, {rgb, 0.0}},
-                {{ width/2.0, -height/2.0}, {rgb, 1.0}},
-                {{-width/2.0, -height/2.0}, {rgb, 1.0}},
-                {{-width/2.0,  height/2.0}, {rgb, 0.0}},
+                {{ width/2.0,  height/2.0}, {rgb, alpha_top_bot.x}},
+                {{ width/2.0, -height/2.0}, {rgb, alpha_top_bot.y}},
+                {{-width/2.0, -height/2.0}, {rgb, alpha_top_bot.y}},
+                {{-width/2.0,  height/2.0}, {rgb, alpha_top_bot.x}},
             },
         };
     }

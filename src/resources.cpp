@@ -20,7 +20,9 @@ void initRainArrays(
     const float tex_width,
     const float tex_height,
     const float rain_width,
-    const float rain_height
+    const float rain_height,
+    const glm::vec3 color,
+    const glm::vec2 alpha_top_bot
 );
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
 void textureDeinit(GLuint* p_texture);
@@ -43,7 +45,16 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     if (!texture) return std::nullopt;
     resources.texture = texture.value();
 
-    initRainArrays(resources.rain_vertices, resources.rain_indices, dis, gen, width, height, 0.01, 0.16);
+    initRainArrays(
+        resources.rain_vertices,
+        resources.rain_indices,
+        dis,
+        gen,
+        width, height,
+        0.01, 0.16,
+        {config.color[0], config.color[1], config.color[2]},
+        {config.color[3], config.color[4]}
+    );
 
     auto shaders = shadersInit();
     if (!shaders) {
@@ -80,10 +91,12 @@ void initRainArrays(
     const float tex_width,
     const float tex_height,
     const float rain_width,
-    const float rain_height
+    const float rain_height,
+    const glm::vec3 color,
+    const glm::vec2 alpha_top_bot
 ) {
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
-        RainQuad quad = RainQuad::init(rain_width*tex_height/tex_width, rain_height, {0.0, 0.0, 1.0});
+        RainQuad quad = RainQuad::init(rain_width*tex_height/tex_width, rain_height, color, alpha_top_bot);
         quad.setPosY(0, dis(gen));
         quad.randomPosX(0, dis, gen);
 
