@@ -1,11 +1,12 @@
-#include <string>
+#include <chrono>
 #include <print>
+#include <string>
 
 #include "window.h"
 #include "resources.h"
 
 Config parseArgs(int argc, char** argv);
-void update(Resources *resources);
+void update(Resources* resources, const float dt_s);
 void draw(const Resources& resources, const int scr_width, const int scr_height);
 void drawRain(const Resources& resources);
 
@@ -23,34 +24,42 @@ int main(int argc, char** argv) {
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
     glEnable(GL_BLEND);
+
+    std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
+    auto end_time = start_time;
     while (!glfwWindowShouldClose(window)) {
+        float dt_s = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count()/float(1000);
+        start_time = std::chrono::steady_clock::now();
+
         glfwPollEvents();
 
         int scr_width, scr_height;
         glfwGetFramebufferSize(window, &scr_width, &scr_height);
 
-        update(&resources);
+        update(&resources, dt_s);
         draw(resources, scr_width, scr_height);
 
         glfwSwapBuffers(window);
+
+        end_time = std::chrono::steady_clock::now();
     }
 
     resourcesDeinit(&resources);
     windowDeinit(&window);
 }
 
-void update(Resources* resources) {
-    const float gravity = 0.01;
+void update(Resources* resources, const float dt_s) {
+    const float gravity = 1;
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
         RainVertex v0 = resources->rain_vertices[i];
         RainVertex v1 = resources->rain_vertices[i+1];
         RainVertex v2 = resources->rain_vertices[i+2];
         RainVertex v3 = resources->rain_vertices[i+3];
 
-        v0.pos.y -= gravity;
-        v1.pos.y -= gravity;
-        v2.pos.y -= gravity;
-        v3.pos.y -= gravity;
+        v0.pos.y -= gravity * dt_s;
+        v1.pos.y -= gravity * dt_s;
+        v2.pos.y -= gravity * dt_s;
+        v3.pos.y -= gravity * dt_s;
 
         resources->rain_vertices[i]   = v0;
         resources->rain_vertices[i+1] = v1;
