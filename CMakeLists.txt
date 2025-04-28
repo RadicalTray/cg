@@ -1,5 +1,5 @@
 # initialization
-cmake_minimum_required(VERSION 3.31) # idk
+cmake_minimum_required(VERSION 3.30) # idk
 project(cg)
 
 add_executable(main src/main.cpp src/window.cpp src/resources.cpp)

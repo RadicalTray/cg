@@ -1,5 +1,3 @@
-#include <vector>
-#include <fstream>
 #include <chrono>
 #include <optional>
 #include <print>
@@ -9,34 +7,11 @@
 
 #include "window.h"
 #include "resources.h"
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
 
 struct Window {
     double wheel_xoffset;
     double wheel_yoffset;
 };
-
-void captureScreen(int width, int height, const std::string& filename = "screenshot.png") {
-    std::vector<unsigned char> pixels(width * height * 3); // 3 bytes per pixel (RGB)
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
-
-    std::vector<unsigned char> flipped(pixels.size());
-    for (int y = 0; y < height; ++y) {
-        std::copy(
-            pixels.begin() + y * width * 3,
-            pixels.begin() + (y + 1) * width * 3,
-            flipped.begin() + (height - 1 - y) * width * 3
-        );
-    }
-
-    stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), width * 3);
-    std::println("Captured screen to {}", filename);
-}
 
 void processInput(
     Resources* resources,
@@ -76,10 +51,10 @@ int main(int argc, char** argv) {
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(-1.0, 1.0);
 
-    auto resource_init_result = new std::optional<Resources>(resourcesInit(config, dis, gen));
+    auto resource_init_result = resourcesInit(config, dis, gen);
     if (!resource_init_result) return -1;
 
-    Resources& resources = (*resource_init_result).value();
+    Resources resources = resource_init_result.value();
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
@@ -97,11 +72,6 @@ int main(int argc, char** argv) {
 
     bool held = false;
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 130");
-
     std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
     auto end_time = start_time;
     while (!glfwWindowShouldClose(window)) {
@@ -109,20 +79,6 @@ int main(int argc, char** argv) {
         start_time = std::chrono::steady_clock::now();
 
         glfwPollEvents();
-
-        // Start ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        // Create UI elements (button to capture screen)
-        ImGui::Begin("Capture Screen");
-        if (ImGui::Button("Capture Screen")) {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-            captureScreen(width, height);
-        }
-        ImGui::End();
 
         glfwGetCursorPos(window, &xpos, &ypos);
         bool hold = GLFW_PRESS == glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
@@ -134,19 +90,10 @@ int main(int argc, char** argv) {
         update(&resources, dt_s, dis, gen, config);
         draw(resources, scr_width, scr_height, rain_count);
 
-        // Render UI
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         glfwSwapBuffers(window);
 
         end_time = std::chrono::steady_clock::now();
     }
-
-    // Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 
     resourcesDeinit(&resources);
     windowDeinit(&window);
@@ -221,7 +168,6 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
     const Buffers buffers = resources.buffers;
     const GLuint image_texture = resources.texture;
     const RenderTarget render_target = resources.render_target;
-    const RenderTarget droplet_render_target = resources.droplet_render_target;
 
     // to render target
     {
@@ -243,26 +189,6 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
         glDrawElements(GL_TRIANGLES, 6*rain_count, GL_UNSIGNED_INT, 0);
     }
 
-    // to another render target
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, droplet_render_target.framebuffer);
-        glViewport(0, 0, droplet_render_target.width, droplet_render_target.height);
-
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glUseProgram(shaders.texture);
-        glBindVertexArray(buffers.vert_arr);
-        glBindTexture(GL_TEXTURE_2D, render_target.texture);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
-
-        // render droplets
-        glUseProgram(resources.shaders.droplet);
-        glUniform1f(glGetUniformLocation(resources.shaders.droplet, "u_time"), glfwGetTime());
-        glUniform1i(glGetUniformLocation(resources.shaders.droplet, "u_texture"), 0);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(0 * sizeof(GLuint)));
-    }
-
     // to window
     {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -274,7 +200,7 @@ void draw(const Resources& resources, const int scr_width, const int scr_height,
         glUseProgram(shaders.screen);
         glUniform2f(0, float(scr_height)/(scr_width), 1.0);
         glBindVertexArray(buffers.vert_arr);
-        glBindTexture(GL_TEXTURE_2D, droplet_render_target.texture);
+        glBindTexture(GL_TEXTURE_2D, render_target.texture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(GLuint)));
     }
 }
@@ -283,7 +209,7 @@ Config parseArgs(int argc, char** argv) {
     uint32_t rain_count = 256;
     float speed = 1.0;
     std::optional<std::string> picture = std::nullopt;
-    float color[5] = {0.0, 0.0, 1.0, 0.0, 1.0};
+    float color[5] = {};
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-n") == 0) {
             i += 1;

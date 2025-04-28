@@ -8,24 +8,19 @@
 const uint32_t SCR_WIDTH = 800;
 const uint32_t SCR_HEIGHT = 600;
 
-void framebufferSizeCallback(GLFWwindow* window, const int width, const int height) {
-    glViewport(0, 0, width, height);
-}
-
 GLFWwindow* windowInit() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Rain", NULL, NULL);
     if (window == NULL) {
         std::println("ERR: Failed to create GLFW window");
         glfwTerminate();
         return nullptr;
     }
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
     int version = gladLoadGL(glfwGetProcAddress);
     if (version == 0) {
