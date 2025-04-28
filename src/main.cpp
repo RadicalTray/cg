@@ -66,7 +66,7 @@ void update(Resources* resources, const float dt_s, std::uniform_real_distributi
         };
 
         if (quad.v[0].pos.y <= -1.0) {
-            quad.setPosY(0, 1.0);
+            quad.setPosY(0, 1.0 + (dis(gen)+1.0));
             quad.randomPosX(0, dis, gen);
         } else {
             quad.translatePosY(-gravity*dt_s);

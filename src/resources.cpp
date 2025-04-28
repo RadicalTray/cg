@@ -12,7 +12,16 @@ struct ShaderCodes {
     const GLchar* frag;
 };
 
-void initRainArrays(const float width, const float height, RainVertex* vertices, GLuint* indices, std::uniform_real_distribution<>& dis, std::mt19937& gen);
+void initRainArrays(
+    RainVertex* vertices,
+    GLuint* indices,
+    std::uniform_real_distribution<>& dis,
+    std::mt19937& gen,
+    const float tex_width,
+    const float tex_height,
+    const float rain_width,
+    const float rain_height
+);
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
 void textureDeinit(GLuint* p_texture);
 std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height);
@@ -34,7 +43,7 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     if (!texture) return std::nullopt;
     resources.texture = texture.value();
 
-    initRainArrays(width, height, resources.rain_vertices, resources.rain_indices, dis, gen);
+    initRainArrays(resources.rain_vertices, resources.rain_indices, dis, gen, width, height, 0.01, 0.16);
 
     auto shaders = shadersInit();
     if (!shaders) {
@@ -63,10 +72,19 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     return resources;
 }
 
-void initRainArrays(const float width, const float height, RainVertex* vertices, GLuint* indices, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
+void initRainArrays(
+    RainVertex* vertices,
+    GLuint* indices,
+    std::uniform_real_distribution<>& dis,
+    std::mt19937& gen,
+    const float tex_width,
+    const float tex_height,
+    const float rain_width,
+    const float rain_height
+) {
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
-        RainQuad quad = RainQuad::init(0.01*height/width, 0.16, {0.0, 0.0, 1.0});
-        quad.setPosY(0, dis(gen));
+        RainQuad quad = RainQuad::init(rain_width*tex_height/tex_width, rain_height, {0.0, 0.0, 1.0});
+        quad.setPosY(0, 1.0 + (dis(gen)+1.0));
         quad.randomPosX(0, dis, gen);
 
         for (size_t j = 0; j < 4; j++) vertices[i+j] = quad.v[j];
