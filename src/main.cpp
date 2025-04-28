@@ -1,14 +1,38 @@
-#include <string>
+﻿#include <string>
 #include <print>
-
+#include <vector>
+#include <fstream>
 #include "window.h"
 #include "resources.h"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 // GOAL: render "rain"
 // TODO:
 //  - [ ] Maintain ratio
 //  - [ ] Mouse movement
 //  - [ ] "Rain"
+
+void captureScreen(int width, int height, const std::string& filename = "screenshot.png") {
+    std::vector<unsigned char> pixels(width * height * 3); // 3 bytes per pixel (RGB)
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    std::vector<unsigned char> flipped(pixels.size());
+    for (int y = 0; y < height; ++y) {
+        std::copy(
+            pixels.begin() + y * width * 3,
+            pixels.begin() + (y + 1) * width * 3,
+            flipped.begin() + (height - 1 - y) * width * 3
+        );
+    }
+
+    stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), width * 3);
+    std::println("Captured screen to {}", filename);
+}
 
 Config parseArgs(int argc, char** argv);
 void draw(const Resources& resources);
@@ -25,13 +49,44 @@ int main(int argc, char** argv) {
 
     Resources resources = resource_init_result.value();
 
+    // Initialize ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+
+    // Main loop
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
+        // Start ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // Create UI elements (button to capture screen)
+        ImGui::Begin("Capture Screen");
+        if (ImGui::Button("Capture Screen")) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            captureScreen(width, height);
+        }
+        ImGui::End();
+
+        // Render OpenGL content
         draw(resources);
+
+        // Render UI
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
     }
+
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     resourcesDeinit(&resources);
     windowDeinit(&window);
