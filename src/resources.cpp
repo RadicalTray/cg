@@ -8,6 +8,10 @@
 #include <print>
 #include <glm/glm.hpp>
 
+#include <fstream>
+#include <sstream>
+#include <string>
+
 std::optional<uint32_t> textureInit(const std::string& filename);
 void textureDeinit(uint32_t* texture);
 std::optional<Shaders> shadersInit();
@@ -75,13 +79,29 @@ std::optional<uint32_t> textureInit(const std::string& filename) {
     return texture;
 }
 
+std::string readShaderFile(const char* filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open shader file");
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
 void textureDeinit(uint32_t* texture) {
     glDeleteTextures(1, texture);
 }
 
 std::optional<Shaders> shadersInit() {
-    const char *vertexShaderSource =
-        "#version 430 core\n"
+    std::string vertexShaderCode = readShaderFile("src/dropletsVertex.h");
+	if (vertexShaderCode.empty()) {
+		std::println("ERR: Failed to read shader file");
+		return std::nullopt;
+	}
+	const char* vertexShaderSource = vertexShaderCode.c_str();
+        /*"#version 430 core\n"
         ""
         "layout (location = 0) in vec3 inPos;"
         "layout (location = 1) in vec2 inUV;"
@@ -91,9 +111,14 @@ std::optional<Shaders> shadersInit() {
         "void main() {"
         "   gl_Position = vec4(inPos.x, inPos.y, inPos.z, 1.0);"
         "   outUV = inUV;"
-        "}";
-    const char *fragmentShaderSource =
-        "#version 430 core\n"
+        "}";*/
+	std::string fragmentShaderCode = readShaderFile("src/droplets.h");
+	if (fragmentShaderCode.empty()) {
+		std::println("ERR: Failed to read shader file");
+		return std::nullopt;
+	}
+	const char* fragmentShaderSource = fragmentShaderCode.c_str();
+        /*"#version 430 core\n"
         ""
         "layout (location = 0) in vec2 inUV;"
         ""
@@ -103,7 +128,7 @@ std::optional<Shaders> shadersInit() {
         ""
         "void main() {"
         "   FragColor = texture(sampler, inUV);"
-        "}";
+        "}";*/
 
     int32_t success;
     char infoLog[512];

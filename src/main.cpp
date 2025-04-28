@@ -30,6 +30,11 @@ int main(int argc, char** argv) {
 
         draw(resources);
 
+        glUniform1f(glGetUniformLocation(resources.shaders.main, "u_time"), glfwGetTime());
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, resources.texture);
+        glUniform1i(glGetUniformLocation(resources.shaders.main, "u_texture"), 0);
+
         glfwSwapBuffers(window);
     }
 
@@ -48,6 +53,6 @@ void draw(const Resources& resources) {
 
 Config parseArgs(int argc, char** argv) {
     return Config{
-        .picture = argc >= 2 ? argv[1] : "assets/default.png",
+        .picture = argc >= 2 ? argv[1] : "assets/default2.png",
     };
 }
