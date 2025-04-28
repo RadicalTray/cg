@@ -26,7 +26,7 @@ vec4 movingDroplet(vec2 uv, float time) {
     st.y += mod(time * speed + startTime, 2.0) - 1.0;
 
     // Droplet center position with slight wiggle
-    float wiggle = sin(time * 2.0 + id.x * 10.0) * 0.05;
+    float wiggle = sin(time * 2.0 + id.x * 10.0) * 0.1;
     vec2 dropPos = vec2(xOffset + wiggle, 0.5);
 
     // Distance to droplet center
@@ -72,7 +72,7 @@ void main() {
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
             vec2 sampleUV = distortedUV + vec2(x, y) * 0.002; // Blur strength
-            float weight = (x == 0 && y == 0) ? 4.0 : 1.0;
+            float weight = 2.5;
             blurredColor += texture(u_texture, sampleUV).rgb * weight;
             totalWeight += weight;
         }
