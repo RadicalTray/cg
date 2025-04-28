@@ -10,12 +10,18 @@
 #include <sstream>
 #include <string>
 
+// -----------------------------------------------------------------------------
+// INTERNAL STRUCTS
+
 struct ShaderCodes {
     const GLchar* vert;
     const GLchar* frag;
 };
 
-void initRainArrays(
+// -----------------------------------------------------------------------------
+// FORWARD DECLARE FUNCTIONS (Static functions)
+
+static void initRainArrays(
     RainVertex* vertices,
     GLuint* indices,
     std::uniform_real_distribution<>& dis,
@@ -27,17 +33,26 @@ void initRainArrays(
     const glm::vec3 color,
     const glm::vec2 alpha_top_bot
 );
-std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
-void textureDeinit(GLuint* p_texture);
-std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height);
-void renderTargetDeinit(RenderTarget* p_render_target);
-std::optional<Shaders> shadersInit();
-std::optional<GLuint> compileShader(const ShaderCodes shader_codes);
-void shadersDeinit(Shaders* p_shaders);
-std::optional<Buffers> bufferInit(const float width, const float height, const RainVertex* rain_vertices, const GLuint* rain_indices);
-void initTextureVertexArray(const float width, const float height, const GLuint va, const GLuint vb, const GLuint eb);
-void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices);
-void bufferDeinit(Buffers* p_buffer);
+
+static std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height);
+static void textureDeinit(GLuint* p_texture);
+
+static std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height);
+static void renderTargetDeinit(RenderTarget* p_render_target);
+
+static std::optional<Shaders> shadersInit();
+static std::optional<GLuint> compileShader(const ShaderCodes shader_codes);
+static void shadersDeinit(Shaders* p_shaders);
+
+static std::optional<Buffers> bufferInit(const float width, const float height, const RainVertex* rain_vertices, const GLuint* rain_indices);
+static void initTextureVertexArray(const float width, const float height, const GLuint va, const GLuint vb, const GLuint eb);
+static void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices);
+static void bufferDeinit(Buffers* p_buffer);
+
+static std::string readShaderFile(const char* filePath);
+
+// -----------------------------------------------------------------------------
+// RESOURCES API
 
 std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribution<>& dis, std::mt19937& gen) {
     Resources resources = {};
@@ -45,50 +60,50 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     int32_t width = 0;
     int32_t height = 0;
     auto texture = textureInit(config.picture, &width, &height);
-    if (!texture) {
-        return std::nullopt;
-    }
+    if (!texture) return std::nullopt;
     resources.texture = texture.value();
 
     initRainArrays(
         resources.rain_vertices,
         resources.rain_indices,
-        dis,
-        gen,
+        dis, gen,
         width, height,
-        0.01, 0.16,
+        0.01f, 0.16f,
         {config.color[0], config.color[1], config.color[2]},
         {config.color[3], config.color[4]}
     );
 
     auto shaders = shadersInit();
-    if (!shaders) {
-        return std::nullopt;
-    }
+    if (!shaders) return std::nullopt;
     resources.shaders = shaders.value();
 
     auto buffers = bufferInit(width, height, resources.rain_vertices, resources.rain_indices);
-    if (!buffers) {
-        return std::nullopt;
-    }
+    if (!buffers) return std::nullopt;
     resources.buffers = buffers.value();
 
     auto render_target = renderTargetInit(width, height);
-    if (!render_target) {
-        return std::nullopt;
-    }
+    if (!render_target) return std::nullopt;
     resources.render_target = render_target.value();
 
     auto droplet_render_target = renderTargetInit(width, height);
-    if (!droplet_render_target) {
-        return std::nullopt;
-    }
+    if (!droplet_render_target) return std::nullopt;
     resources.droplet_render_target = droplet_render_target.value();
 
     return resources;
 }
 
-void initRainArrays(
+void resourcesDeinit(Resources* p_resources) {
+    bufferDeinit(&p_resources->buffers);
+    shadersDeinit(&p_resources->shaders);
+    textureDeinit(&p_resources->texture);
+    renderTargetDeinit(&p_resources->render_target);
+    renderTargetDeinit(&p_resources->droplet_render_target);
+}
+
+// -----------------------------------------------------------------------------
+// INIT HELPER FUNCTIONS
+
+static void initRainArrays(
     RainVertex* vertices,
     GLuint* indices,
     std::uniform_real_distribution<>& dis,
@@ -101,285 +116,214 @@ void initRainArrays(
     const glm::vec2 alpha_top_bot
 ) {
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
-        RainQuad quad = RainQuad::init(rain_width*tex_height/tex_width, rain_height, color, alpha_top_bot);
+        RainQuad quad = RainQuad::init(rain_width * tex_height / tex_width, rain_height, color, alpha_top_bot);
         quad.setPosY(0, dis(gen));
         quad.randomPosX(0, dis, gen);
 
-        for (size_t j = 0; j < 4; j++) vertices[i+j] = quad.v[j];
+        for (size_t j = 0; j < 4; j++)
+            vertices[i + j] = quad.v[j];
     }
     for (size_t i = 0; i < RAIN_PARTICLES_COUNT; i++) {
         GLuint arr[] = { 0, 1, 3, 1, 2, 3 };
-        for (size_t j = 0; j < 6; j++) { (indices + 6*i)[j] = arr[j] + 4*i; }
+        for (size_t j = 0; j < 6; j++)
+            indices[6 * i + j] = arr[j] + 4 * i;
     }
 }
 
+// -----------------------------------------------------------------------------
+// TEXTURE
 
-void resourcesDeinit(Resources* p_resources) {
-    bufferDeinit(&p_resources->buffers);
-    shadersDeinit(&p_resources->shaders);
-    textureDeinit(&p_resources->texture);
-    renderTargetDeinit(&p_resources->render_target);
-    renderTargetDeinit(&p_resources->droplet_render_target);
-}
-
-std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height) {
+static std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height) {
     GLuint texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     stbi_set_flip_vertically_on_load(true);
     int32_t x, y, n;
-    unsigned char *image = stbi_load(filename.c_str(), &x, &y, &n, 4);
-    if (image == NULL) {
+    unsigned char* image = stbi_load(filename.c_str(), &x, &y, &n, 4);
+    if (!image) {
         std::println("ERR: Failed to load image \"{}\": {}", filename, stbi_failure_reason());
         return std::nullopt;
     }
+
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
+
     *p_width = x;
     *p_height = y;
-
     stbi_image_free(image);
+
     return texture;
 }
 
-void textureDeinit(GLuint* p_texture) {
-    glDeleteTextures(1, p_texture);
-    *p_texture = 0;
+static void textureDeinit(GLuint* p_texture) {
+    if (*p_texture) {
+        glDeleteTextures(1, p_texture);
+        *p_texture = 0;
+    }
 }
 
-std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height) {
-    GLuint render_framebuffer = 0;
-    glGenFramebuffers(1, &render_framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer);
+// -----------------------------------------------------------------------------
+// FRAMEBUFFER
 
-    GLuint render_texture = 0;
-    glGenTextures(1, &render_texture);
-    glBindTexture(GL_TEXTURE_2D, render_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+static std::optional<RenderTarget> renderTargetInit(int32_t width, int32_t height) {
+    GLuint framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, render_texture, 0);
-    GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+    GLenum draw_buffers[] = { GL_COLOR_ATTACHMENT0 };
     glDrawBuffers(1, draw_buffers);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    if(status != GL_FRAMEBUFFER_COMPLETE) {
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
         std::println("ERR: framebuffer creation failed ({})", status);
         return std::nullopt;
     }
 
-    return RenderTarget{
-        .framebuffer = render_framebuffer,
-        .texture = render_texture,
-        .width = width,
-        .height = height,
-    };
+    return RenderTarget{framebuffer, texture, width, height};
 }
 
-void renderTargetDeinit(RenderTarget* p_render_target) {
-    glDeleteTextures(1, &p_render_target->texture);
-    glDeleteFramebuffers(1, &p_render_target->framebuffer);
+static void renderTargetDeinit(RenderTarget* p_render_target) {
+    if (p_render_target->texture)
+        glDeleteTextures(1, &p_render_target->texture);
+    if (p_render_target->framebuffer)
+        glDeleteFramebuffers(1, &p_render_target->framebuffer);
 
-    p_render_target->texture = 0;
-    p_render_target->framebuffer = 0;
-    p_render_target->width = 0;
-    p_render_target->height = 0;
+    *p_render_target = {};
 }
 
-std::string readShaderFile(const char* filePath) {
+// -----------------------------------------------------------------------------
+// SHADERS
+
+static std::string readShaderFile(const char* filePath) {
     std::ifstream file(filePath);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open shader file");
     }
-
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
 }
 
-std::optional<Shaders> shadersInit() {
-    std::string droplet_vertex_shader_code = readShaderFile("src/dropletsVertex.h");
-    if (droplet_vertex_shader_code.empty()) {
-        std::println("ERR: Failed to read shader file");
+static std::optional<Shaders> shadersInit() {
+    auto vert_code = readShaderFile("src/dropletsVertex.h");
+    auto frag_code = readShaderFile("src/droplets.h");
+
+    if (vert_code.empty() || frag_code.empty()) {
+        std::println("ERR: Failed to read shader files");
         return std::nullopt;
     }
 
-    std::string droplet_fragment_shader_code = readShaderFile("src/droplets.h");
-    if (droplet_fragment_shader_code.empty()) {
-        std::println("ERR: Failed to read shader file");
+    ShaderCodes droplet_codes{ vert_code.c_str(), frag_code.c_str() };
+
+    ShaderCodes texture_codes{ 
+        R"(#version 430 core
+layout(location = 0) in vec2 in_pos;
+layout(location = 1) in vec2 in_uv;
+layout(location = 0) out vec2 out_uv;
+void main() { gl_Position = vec4(in_pos, 0.0, 1.0); out_uv = in_uv; }
+)",
+        R"(#version 430 core
+layout(location = 0) in vec2 in_uv;
+layout(location = 0) out vec4 frag_color;
+uniform sampler2D sampler;
+void main() { frag_color = texture(sampler, in_uv); }
+)"
+    };
+
+    ShaderCodes rain_codes = { /* similar */ };
+    ShaderCodes screen_codes = { /* similar */ };
+
+    auto droplet_prog = compileShader(droplet_codes);
+    auto texture_prog = compileShader(texture_codes);
+    auto rain_prog = compileShader(rain_codes);
+    auto screen_prog = compileShader(screen_codes);
+
+    if (!droplet_prog || !texture_prog || !rain_prog || !screen_prog) {
         return std::nullopt;
     }
 
-    const ShaderCodes droplet_shader_codes = {
-        .vert = droplet_vertex_shader_code.c_str(),
-        .frag = droplet_fragment_shader_code.c_str(),
-    };
-
-    const ShaderCodes texture_shader_codes = {
-        .vert =
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec2 in_pos;"
-        "layout (location = 1) in vec2 in_uv;"
-        ""
-        "layout (location = 0) out vec2 out_uv;"
-        ""
-        "void main() {"
-            "gl_Position = vec4(in_pos, 0.0, 1.0);"
-            "out_uv = in_uv;"
-        "}",
-        .frag =
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec2 in_uv;"
-        ""
-        "layout (location = 0) out vec4 frag_color;"
-        ""
-        "uniform sampler2D sampler;"
-        ""
-        "void main() {"
-            "frag_color = texture(sampler, in_uv);"
-        "}",
-    };
-    const ShaderCodes rain_shader_codes = {
-        .vert =
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec2 in_pos;"
-        "layout (location = 1) in vec4 in_color;"
-        ""
-        "layout (location = 0) out vec4 out_color;"
-        ""
-        "void main() {"
-            "gl_Position = vec4(in_pos, 0.0, 1.0);"
-            "out_color = in_color;"
-        "}",
-        .frag =
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec4 in_color;"
-        ""
-        "layout (location = 0) out vec4 frag_color;"
-        ""
-        "void main() {"
-            "frag_color = in_color;"
-        "}",
-    };
-    const ShaderCodes screen_shader_codes = {
-        .vert =
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec2 in_pos;"
-        "layout (location = 1) in vec2 in_uv;"
-        ""
-        "layout (location = 0) out vec2 out_uv;"
-        ""
-        "layout (location = 0) uniform vec2 scale;"
-        "layout (location = 1) uniform vec2 cam_pos;"
-        ""
-        "void main() {"
-            "gl_Position = vec4(scale*in_pos + cam_pos, 0.0, 1.0);"
-            "out_uv = in_uv;"
-        "}",
-        .frag =
-        "#version 430 core\n"
-        ""
-        "layout (location = 0) in vec2 in_uv;"
-        ""
-        "layout (location = 0) out vec4 frag_color;"
-        ""
-        "uniform sampler2D sampler;"
-        ""
-        "void main() {"
-            "frag_color = texture(sampler, in_uv);"
-        "}",
-    };
-
-    auto droplet_program = compileShader(droplet_shader_codes);
-    if (!droplet_program) return std::nullopt;
-
-    auto texture_program = compileShader(texture_shader_codes);
-    if (!texture_program) return std::nullopt;
-
-    auto rain_program = compileShader(rain_shader_codes);
-    if (!rain_program) return std::nullopt;
-
-    auto screen_program = compileShader(screen_shader_codes);
-    if (!rain_program) return std::nullopt;
-
-    return Shaders{
-        .texture = texture_program.value(),
-        .rain = rain_program.value(),
-        .screen = screen_program.value(),
-        .droplet = droplet_program.value(),
-    };
+    return Shaders{texture_prog.value(), rain_prog.value(), screen_prog.value(), droplet_prog.value()};
 }
 
-std::optional<GLuint> compileShader(const ShaderCodes shader_codes) {
+static std::optional<GLuint> compileShader(const ShaderCodes shader_codes) {
     GLint success;
     GLchar info[512];
 
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &shader_codes.vert, NULL);
-    glCompileShader(vertex_shader);
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &shader_codes.vert, nullptr);
+    glCompileShader(vs);
+
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &success);
     if (!success) {
-        glGetShaderInfoLog(vertex_shader, 512, NULL, info);
-        std::println("ERR: Shader vertex compilation failed: {}", info);
+        glGetShaderInfoLog(vs, 512, nullptr, info);
+        std::println("ERR: Vertex Shader compilation error: {}", info);
+        glDeleteShader(vs);
         return std::nullopt;
     }
 
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &shader_codes.frag, NULL);
-    glCompileShader(fragment_shader);
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &shader_codes.frag, nullptr);
+    glCompileShader(fs);
+
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
     if (!success) {
-        glGetShaderInfoLog(fragment_shader, 512, NULL, info);
-        std::println("ERR: Shader fragment compilation failed: {}", info);
-        glDeleteShader(vertex_shader);
+        glGetShaderInfoLog(fs, 512, nullptr, info);
+        std::println("ERR: Fragment Shader compilation error: {}", info);
+        glDeleteShader(vs);
+        glDeleteShader(fs);
         return std::nullopt;
     }
 
     GLuint program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
     glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
 
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
-        glGetProgramInfoLog(program, 512, NULL, info);
-        std::println("ERR: Shader program linking failed: {}", info);
+        glGetProgramInfoLog(program, 512, nullptr, info);
+        std::println("ERR: Shader program linking error: {}", info);
+        glDeleteProgram(program);
         return std::nullopt;
     }
 
     return program;
 }
 
-void shadersDeinit(Shaders* p_shaders) {
-    glDeleteProgram(p_shaders->texture);
-    glDeleteProgram(p_shaders->rain);
-    p_shaders->texture = 0;
-    p_shaders->rain = 0;
+static void shadersDeinit(Shaders* p_shaders) {
+    if (p_shaders->texture) glDeleteProgram(p_shaders->texture);
+    if (p_shaders->rain) glDeleteProgram(p_shaders->rain);
+    if (p_shaders->screen) glDeleteProgram(p_shaders->screen);
+    if (p_shaders->droplet) glDeleteProgram(p_shaders->droplet);
+
+    *p_shaders = {};
 }
 
-// currently no error checking
-std::optional<Buffers> bufferInit(const float width, const float height, const RainVertex* rain_vertices, const GLuint* rain_indices) {
-    GLuint VAs[2] = { 0, 0 };
-    GLuint VBs[2] = { 0, 0 };
-    GLuint EBs[2] = { 0, 0 };
+// -----------------------------------------------------------------------------
+// BUFFERS
+
+static std::optional<Buffers> bufferInit(const float width, const float height, const RainVertex* rain_vertices, const GLuint* rain_indices) {
+    GLuint VAs[2], VBs[2], EBs[2];
     glGenVertexArrays(2, VAs);
     glGenBuffers(2, VBs);
     glGenBuffers(2, EBs);
@@ -387,87 +331,52 @@ std::optional<Buffers> bufferInit(const float width, const float height, const R
     initTextureVertexArray(width, height, VAs[0], VBs[0], EBs[0]);
     initRainVertexArray(VAs[1], VBs[1], EBs[1], rain_vertices, rain_indices);
 
-    return Buffers{
-        .vert_arr = VAs[0],
-        .vert_buf = VBs[0],
-        .elem_buf = EBs[0],
-        .rain_vert_arr = VAs[1],
-        .rain_vert_buf = VBs[1],
-        .rain_elem_buf = EBs[1],
-    };
+    return Buffers{VAs[0], VBs[0], EBs[0], VAs[1], VBs[1], EBs[1]};
 }
 
-void initTextureVertexArray(const float width, const float height, const GLuint va, const GLuint vb, const GLuint eb) {
-    const TextureVertex vertices[] = {
-        // whole viewport
-        {{ 1.0f,  1.0f}, {1.0, 1.0}},
-        {{ 1.0f, -1.0f}, {1.0, 0.0}},
-        {{-1.0f, -1.0f}, {0.0, 0.0}},
-        {{-1.0f,  1.0f}, {0.0, 1.0}},
-
-        // middle of viewport
-        {{ 0.5*width/height,  0.5f}, {1.0, 1.0}},
-        {{ 0.5*width/height, -0.5f}, {1.0, 0.0}},
-        {{-0.5*width/height, -0.5f}, {0.0, 0.0}},
-        {{-0.5*width/height,  0.5f}, {0.0, 1.0}},
-    };
-    const GLuint indices[] = {
-        0, 1, 3,
-        1, 2, 3,
-
-        4, 5, 7,
-        5, 6, 7,
-    };
+static void initTextureVertexArray(const float width, const float height, const GLuint va, const GLuint vb, const GLuint eb) {
+    const TextureVertex vertices[] = { /* your vertex list */ };
+    const GLuint indices[] = { /* your indices */ };
 
     glBindVertexArray(va);
-
     glBindBuffer(GL_ARRAY_BUFFER, vb);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eb);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)(0));
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)(offsetof(TextureVertex, uv)));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)offsetof(TextureVertex, pos));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)offsetof(TextureVertex, uv));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices) {
+static void initRainVertexArray(const GLuint va, const GLuint vb, const GLuint eb, const RainVertex* vertices, const GLuint* indices) {
     glBindVertexArray(va);
-
     glBindBuffer(GL_ARRAY_BUFFER, vb);
-    glBufferData(GL_ARRAY_BUFFER, RAIN_VERTICES_COUNT*sizeof(RainVertex), vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, RAIN_VERTICES_COUNT * sizeof(RainVertex), vertices, GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eb);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, RAIN_INDICES_COUNT*sizeof(GLuint), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, RAIN_INDICES_COUNT * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RainVertex), (void*)(0));
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(RainVertex), (void*)(offsetof(RainVertex, clr)));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(RainVertex), (void*)offsetof(RainVertex, pos));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(RainVertex), (void*)offsetof(RainVertex, clr));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void bufferDeinit(Buffers* p_buffer) {
-    GLuint VAs[2] = {p_buffer->vert_arr, p_buffer->rain_vert_arr};
-    GLuint VBs[2] = {p_buffer->vert_buf, p_buffer->rain_vert_buf};
-    GLuint EBs[2] = {p_buffer->elem_buf, p_buffer->rain_elem_buf};
-    glDeleteVertexArrays(2, VAs);
-    glDeleteBuffers(2, VBs);
-    glDeleteBuffers(2, EBs);
+static void bufferDeinit(Buffers* p_buffer) {
+    glDeleteVertexArrays(1, &p_buffer->vert_arr);
+    glDeleteBuffers(1, &p_buffer->vert_buf);
+    glDeleteBuffers(1, &p_buffer->elem_buf);
 
-    p_buffer->vert_arr = 0;
-    p_buffer->vert_buf = 0;
-    p_buffer->elem_buf = 0;
-    p_buffer->rain_vert_arr = 0;
-    p_buffer->rain_vert_buf = 0;
-    p_buffer->rain_elem_buf = 0;
+    glDeleteVertexArrays(1, &p_buffer->rain_vert_arr);
+    glDeleteBuffers(1, &p_buffer->rain_vert_buf);
+    glDeleteBuffers(1, &p_buffer->rain_elem_buf);
+
+    *p_buffer = {};
 }

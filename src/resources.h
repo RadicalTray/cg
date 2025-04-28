@@ -1,3 +1,5 @@
+#pragma once
+
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 
@@ -6,8 +8,8 @@
 #include <string>
 
 #define RAIN_PARTICLES_COUNT 8192
-#define RAIN_VERTICES_COUNT 4 * RAIN_PARTICLES_COUNT
-#define RAIN_INDICES_COUNT 6 * RAIN_PARTICLES_COUNT
+#define RAIN_VERTICES_COUNT (4 * RAIN_PARTICLES_COUNT)
+#define RAIN_INDICES_COUNT (6 * RAIN_PARTICLES_COUNT)
 
 struct Config {
     std::string picture;
@@ -52,54 +54,54 @@ struct RainQuad {
         for (int i = 0; i < 4; i++) v[i].pos.y += dy;
     }
 
-    float height() {
+    float height() const {
         return v[0].pos.y - v[1].pos.y;
     }
 
-    static RainQuad init(const float width, const float height, const glm::vec3 rgb, const glm::vec2 alpha_top_bot) {
+    static RainQuad init(float width, float height, const glm::vec3& rgb, const glm::vec2& alpha_top_bot) {
         return RainQuad{
             .v = {
-                {{ width/2.0,  height/2.0}, {rgb, alpha_top_bot.x}},
-                {{ width/2.0, -height/2.0}, {rgb, alpha_top_bot.y}},
-                {{-width/2.0, -height/2.0}, {rgb, alpha_top_bot.y}},
-                {{-width/2.0,  height/2.0}, {rgb, alpha_top_bot.x}},
+                {{ width / 2.0f,  height / 2.0f}, {rgb, alpha_top_bot.x}},
+                {{ width / 2.0f, -height / 2.0f}, {rgb, alpha_top_bot.y}},
+                {{-width / 2.0f, -height / 2.0f}, {rgb, alpha_top_bot.y}},
+                {{-width / 2.0f,  height / 2.0f}, {rgb, alpha_top_bot.x}},
             },
         };
     }
 };
 
 struct Shaders {
-    GLuint texture;
-    GLuint rain;
-    GLuint screen;
-    GLuint droplet;
+    GLuint texture = 0;
+    GLuint rain = 0;
+    GLuint screen = 0;
+    GLuint droplet = 0;
 };
 
 struct Buffers {
-    GLuint vert_arr;
-    GLuint vert_buf;
-    GLuint elem_buf;
-    GLuint rain_vert_arr;
-    GLuint rain_vert_buf;
-    GLuint rain_elem_buf;
+    GLuint vert_arr = 0;
+    GLuint vert_buf = 0;
+    GLuint elem_buf = 0;
+    GLuint rain_vert_arr = 0;
+    GLuint rain_vert_buf = 0;
+    GLuint rain_elem_buf = 0;
 };
 
 struct RenderTarget {
-    GLuint framebuffer;
-    GLuint texture;
-    int32_t width;
-    int32_t height;
+    GLuint framebuffer = 0;
+    GLuint texture = 0;
+    int32_t width = 0;
+    int32_t height = 0;
 };
 
 struct Resources {
     Shaders shaders;
     Buffers buffers;
-    GLuint texture;
+    GLuint texture = 0;
     RenderTarget render_target;
     RenderTarget droplet_render_target;
     RainVertex rain_vertices[RAIN_VERTICES_COUNT];
     GLuint rain_indices[RAIN_INDICES_COUNT];
 };
 
-std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribution<>& dis, std::mt19937& gen);
+std::optional<Resources> resourcesInit(const Config& config, std::uniform_real_distribution<>& dis, std::mt19937& gen);
 void resourcesDeinit(Resources* p_resources);
