@@ -114,7 +114,8 @@ int main(int argc, char** argv) {
     std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
     auto end_time = start_time;
     while (!glfwWindowShouldClose(window)) {
-        float dt_s = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count()/float(1000);
+        float dt_s = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count()
+            / float(1000000);
         start_time = std::chrono::steady_clock::now();
 
         glfwPollEvents();
