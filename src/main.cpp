@@ -23,18 +23,19 @@ struct Window {
 
 void captureScreen(int width, int height, const std::string& filename = "screenshot.png") {
     std::vector<unsigned char> pixels(width * height * 3); // 3 bytes per pixel (RGB)
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+    const int channels = 4;
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
     std::vector<unsigned char> flipped(pixels.size());
     for (int y = 0; y < height; ++y) {
         std::copy(
-            pixels.begin() + y * width * 3,
-            pixels.begin() + (y + 1) * width * 3,
-            flipped.begin() + (height - 1 - y) * width * 3
+            pixels.begin() + y * width * channels,
+            pixels.begin() + (y + 1) * width * channels,
+            flipped.begin() + (height - 1 - y) * width * channels
         );
     }
 
-    stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), width * 3);
+    stbi_write_png(filename.c_str(), width, height, channels, flipped.data(), width * channels);
     std::println("Captured screen to {}", filename);
 }
 
@@ -140,10 +141,6 @@ int main(int argc, char** argv) {
         update(&resources, dt_s, dis, gen, config);
         draw(resources, scr_width, scr_height, rain_count);
 
-        // Render UI
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         // Perform screen capture BEFORE rendering UI
         if (requestCapture) {
             int width, height;
@@ -175,6 +172,7 @@ int main(int argc, char** argv) {
             }
         }
 
+        ImGui::EndFrame();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
