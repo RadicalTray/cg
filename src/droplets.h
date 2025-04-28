@@ -92,7 +92,7 @@ void main() {
     color = mix(color, vec3(0.6, 0.7, 0.8), 0.1); //
 
     // Add inner highlight (fake specular light in droplet)
-    float highlight = smoothstep(0.05, 0.0, length(uv - vec2(0.5))) * dropletEffect * 0.8;
+    float highlight = smoothstep(0.08, 0.0, length(uv - vec2(0.5))) * dropletEffect * 0.8;
     color += highlight;
 
     fragColor = vec4(color, 1.0);
