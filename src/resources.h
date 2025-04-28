@@ -5,12 +5,15 @@
 #include <random>
 #include <string>
 
-#define RAIN_PARTICLES_COUNT 4096
+#define RAIN_PARTICLES_COUNT 8192
 #define RAIN_VERTICES_COUNT 4 * RAIN_PARTICLES_COUNT
 #define RAIN_INDICES_COUNT 6 * RAIN_PARTICLES_COUNT
 
 struct Config {
     std::string picture;
+    uint32_t rain_count;
+    float speed;
+    glm::vec3 rgb;
 };
 
 struct TextureVertex {
@@ -46,6 +49,10 @@ struct RainQuad {
 
     void translatePosY(const float dy) {
         for (int i = 0; i < 4; i++) v[i].pos.y += dy;
+    }
+
+    float height() {
+        return v[0].pos.y - v[1].pos.y;
     }
 
     static RainQuad init(const float width, const float height, const glm::vec3 rgb) {

@@ -84,7 +84,7 @@ void initRainArrays(
 ) {
     for (size_t i = 0; i < RAIN_VERTICES_COUNT; i += 4) {
         RainQuad quad = RainQuad::init(rain_width*tex_height/tex_width, rain_height, {0.0, 0.0, 1.0});
-        quad.setPosY(0, 1.0 + (dis(gen)+1.0));
+        quad.setPosY(0, dis(gen));
         quad.randomPosX(0, dis, gen);
 
         for (size_t j = 0; j < 4; j++) vertices[i+j] = quad.v[j];
