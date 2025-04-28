@@ -51,10 +51,10 @@ int main(int argc, char** argv) {
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(-1.0, 1.0);
 
-    auto resource_init_result = resourcesInit(config, dis, gen);
+    auto resource_init_result = new std::optional<Resources>(resourcesInit(config, dis, gen));
     if (!resource_init_result) return -1;
 
-    Resources resources = resource_init_result.value();
+    Resources& resources = (*resource_init_result).value();
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
