@@ -6,9 +6,6 @@
 
 #include <optional>
 #include <print>
-#include <fstream>
-#include <sstream>
-#include <string>
 
 struct ShaderCodes {
     const GLchar* vert;
@@ -45,9 +42,7 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     int32_t width = 0;
     int32_t height = 0;
     auto texture = textureInit(config.picture, &width, &height);
-    if (!texture) {
-        return std::nullopt;
-    }
+    if (!texture) return std::nullopt;
     resources.texture = texture.value();
 
     initRainArrays(
@@ -63,27 +58,27 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
 
     auto shaders = shadersInit();
     if (!shaders) {
+        textureDeinit(&texture.value());
         return std::nullopt;
     }
     resources.shaders = shaders.value();
 
     auto buffers = bufferInit(width, height, resources.rain_vertices, resources.rain_indices);
     if (!buffers) {
+        shadersDeinit(&shaders.value());
+        textureDeinit(&texture.value());
         return std::nullopt;
     }
     resources.buffers = buffers.value();
 
     auto render_target = renderTargetInit(width, height);
     if (!render_target) {
+        bufferDeinit(&buffers.value());
+        shadersDeinit(&shaders.value());
+        textureDeinit(&texture.value());
         return std::nullopt;
     }
     resources.render_target = render_target.value();
-
-    auto droplet_render_target = renderTargetInit(width, height);
-    if (!droplet_render_target) {
-        return std::nullopt;
-    }
-    resources.droplet_render_target = droplet_render_target.value();
 
     return resources;
 }
@@ -113,13 +108,11 @@ void initRainArrays(
     }
 }
 
-
 void resourcesDeinit(Resources* p_resources) {
     bufferDeinit(&p_resources->buffers);
     shadersDeinit(&p_resources->shaders);
     textureDeinit(&p_resources->texture);
     renderTargetDeinit(&p_resources->render_target);
-    renderTargetDeinit(&p_resources->droplet_render_target);
 }
 
 std::optional<GLuint> textureInit(const std::string& filename, int32_t* p_width, int32_t* p_height) {
@@ -197,35 +190,7 @@ void renderTargetDeinit(RenderTarget* p_render_target) {
     p_render_target->height = 0;
 }
 
-std::string readShaderFile(const char* filePath) {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open shader file");
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
 std::optional<Shaders> shadersInit() {
-    std::string droplet_vertex_shader_code = readShaderFile("src/dropletsVertex.h");
-    if (droplet_vertex_shader_code.empty()) {
-        std::println("ERR: Failed to read shader file");
-        return std::nullopt;
-    }
-
-    std::string droplet_fragment_shader_code = readShaderFile("src/droplets.h");
-    if (droplet_fragment_shader_code.empty()) {
-        std::println("ERR: Failed to read shader file");
-        return std::nullopt;
-    }
-
-    const ShaderCodes droplet_shader_codes = {
-        .vert = droplet_vertex_shader_code.c_str(),
-        .frag = droplet_fragment_shader_code.c_str(),
-    };
-
     const ShaderCodes texture_shader_codes = {
         .vert =
         "#version 430 core\n"
@@ -306,9 +271,6 @@ std::optional<Shaders> shadersInit() {
         "}",
     };
 
-    auto droplet_program = compileShader(droplet_shader_codes);
-    if (!droplet_program) return std::nullopt;
-
     auto texture_program = compileShader(texture_shader_codes);
     if (!texture_program) return std::nullopt;
 
@@ -322,7 +284,6 @@ std::optional<Shaders> shadersInit() {
         .texture = texture_program.value(),
         .rain = rain_program.value(),
         .screen = screen_program.value(),
-        .droplet = droplet_program.value(),
     };
 }
 
