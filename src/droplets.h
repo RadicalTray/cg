@@ -1,7 +1,7 @@
 #version 430 core
 
-in vec2 fragCoord;
-out vec4 fragColor;
+layout(location = 0) in vec2 fragCoord;
+layout(location = 0) out vec4 fragColor;
 
 uniform sampler2D u_texture;
 uniform float u_time;
