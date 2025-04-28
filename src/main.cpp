@@ -23,18 +23,19 @@ struct Window {
 
 void captureScreen(int width, int height, const std::string& filename = "screenshot.png") {
     std::vector<unsigned char> pixels(width * height * 3); // 3 bytes per pixel (RGB)
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+    const int channels = 4;
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
     std::vector<unsigned char> flipped(pixels.size());
     for (int y = 0; y < height; ++y) {
         std::copy(
-            pixels.begin() + y * width * 3,
-            pixels.begin() + (y + 1) * width * 3,
-            flipped.begin() + (height - 1 - y) * width * 3
+            pixels.begin() + y * width * channels,
+            pixels.begin() + (y + 1) * width * channels,
+            flipped.begin() + (height - 1 - y) * width * channels
         );
     }
 
-    stbi_write_png(filename.c_str(), width, height, 3, flipped.data(), width * 3);
+    stbi_write_png(filename.c_str(), width, height, channels, flipped.data(), width * channels);
     std::println("Captured screen to {}", filename);
 }
 
@@ -102,6 +103,14 @@ int main(int argc, char** argv) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
+    // Variables for capture success message
+    bool showCaptureSuccess = false;
+    float captureSuccessTimer = 0.0f;
+    const float successMessageDuration = 2.0f; // seconds
+
+    bool requestCapture = false; // capture flag
+
+    // Main loop
     std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
     auto end_time = start_time;
     while (!glfwWindowShouldClose(window)) {
@@ -118,9 +127,7 @@ int main(int argc, char** argv) {
         // Create UI elements (button to capture screen)
         ImGui::Begin("Capture Screen");
         if (ImGui::Button("Capture Screen")) {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-            captureScreen(width, height);
+            requestCapture = true; // set capture flag
         }
         ImGui::End();
 
@@ -134,7 +141,38 @@ int main(int argc, char** argv) {
         update(&resources, dt_s, dis, gen, config);
         draw(resources, scr_width, scr_height, rain_count);
 
-        // Render UI
+        // Perform screen capture BEFORE rendering UI
+        if (requestCapture) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            captureScreen(width, height);
+
+            showCaptureSuccess = true;
+            captureSuccessTimer = 0.0f;
+            requestCapture = false;
+        }
+
+        // Render UI now
+        if (showCaptureSuccess) {
+            ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+            ImGui::Begin("Success", nullptr,
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_AlwaysAutoResize |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing |
+                ImGuiWindowFlags_NoNav);
+
+            ImGui::Text("Capture Success!");
+            ImGui::End();
+
+            captureSuccessTimer += ImGui::GetIO().DeltaTime;
+            if (captureSuccessTimer >= successMessageDuration) {
+                showCaptureSuccess = false;
+            }
+        }
+
+        ImGui::EndFrame();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
