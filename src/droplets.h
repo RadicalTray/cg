@@ -60,7 +60,7 @@ void main() {
     if (dropletEffect > 0.0) {
         vec2 center = vec2(0.5);
         vec2 direction = normalize(uv - center);
-        offset = direction * dropletEffect * 0.01;
+        offset = direction * dropletEffect * 0.07;
     }
 
     // Apply UV distortion
