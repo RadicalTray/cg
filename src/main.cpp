@@ -1,11 +1,11 @@
-#include <vector>
-#include <fstream>
 #include <chrono>
+#include <cstring>
+#include <fstream>
 #include <optional>
 #include <print>
 #include <random>
 #include <string>
-#include <cstring>
+#include <vector>
 
 #include "window.h"
 #include "resources.h"
@@ -67,8 +67,6 @@ int main(int argc, char** argv) {
     std::println("Rain count: {}", config.rain_count);
     std::println("Speed: {}", config.speed);
     std::println("Color: {} {} {} {}->{}", config.color[0], config.color[1], config.color[2], config.color[3], config.color[4]);
-
-    const uint32_t rain_count = config.rain_count;
 
     GLFWwindow* window = windowInit();
     if (window == NULL) return -1;
@@ -138,9 +136,16 @@ int main(int argc, char** argv) {
         int scr_width, scr_height;
         glfwGetFramebufferSize(window, &scr_width, &scr_height);
 
+        if (glfwGetKey(window, GLFW_KEY_EQUAL) && config.rain_count < RAIN_PARTICLES_COUNT) {
+            config.rain_count += 1;
+        }
+        if (glfwGetKey(window, GLFW_KEY_MINUS) && config.rain_count > 0) {
+            config.rain_count -= 1;
+        }
+
         processInput(&resources, scr_width, scr_height, &held, hold, &old_xpos, &old_ypos, xpos, ypos, &old_cam_pos);
         update(&resources, dt_s, dis, gen, config);
-        draw(resources, scr_width, scr_height, rain_count);
+        draw(resources, scr_width, scr_height, config.rain_count);
 
         // Perform screen capture BEFORE rendering UI
         if (requestCapture) {
