@@ -98,7 +98,6 @@ struct Resources {
     RenderTarget render_target;
     RenderTarget droplet_render_target;
     RainVertex rain_vertices[RAIN_VERTICES_COUNT];
-    GLuint rain_indices[RAIN_INDICES_COUNT];
 };
 
 std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribution<>& dis, std::mt19937& gen);

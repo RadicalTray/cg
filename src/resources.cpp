@@ -50,9 +50,10 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     }
     resources.texture = texture.value();
 
+    GLuint rain_indices[RAIN_INDICES_COUNT] = {};
     initRainArrays(
         resources.rain_vertices,
-        resources.rain_indices,
+        rain_indices,
         dis,
         gen,
         width, height,
@@ -67,7 +68,7 @@ std::optional<Resources> resourcesInit(Config config, std::uniform_real_distribu
     }
     resources.shaders = shaders.value();
 
-    auto buffers = bufferInit(width, height, resources.rain_vertices, resources.rain_indices);
+    auto buffers = bufferInit(width, height, resources.rain_vertices, rain_indices);
     if (!buffers) {
         return std::nullopt;
     }
