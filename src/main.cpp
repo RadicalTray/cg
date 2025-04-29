@@ -143,9 +143,9 @@ int main(int argc, char** argv) {
 
         // Perform screen capture BEFORE rendering UI
         if (requestCapture) {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-            captureScreen(width, height);
+            glBindFramebuffer(GL_FRAMEBUFFER, resources.droplet_render_target.framebuffer);
+            captureScreen(resources.droplet_render_target.width, resources.droplet_render_target.height);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
             showCaptureSuccess = true;
             captureSuccessTimer = 0.0f;
